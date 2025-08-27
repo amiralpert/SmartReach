@@ -92,13 +92,24 @@ class SmartKaggleLogger:
         
         return env
     
+    def _ensure_connection(self):
+        """Ensure database connection is alive"""
+        try:
+            # Test if connection is alive with a simple query
+            if self.db_conn:
+                cursor = self.db_conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+        except:
+            # Connection is dead, recreate it
+            import psycopg2
+            self.db_conn = psycopg2.connect(**self.db_config)
+    
     def _write_to_neon(self, message: str, data: Optional[Dict] = None):
         """Write log entry to Neon database"""
         try:
-            # Check if connection is still alive and reconnect if needed
-            if self.db_conn.closed:
-                import psycopg2
-                self.db_conn = psycopg2.connect(**self.db_config)
+            # Ensure connection is alive
+            self._ensure_connection()
             
             cursor = self.db_conn.cursor()
             cursor.execute("""
