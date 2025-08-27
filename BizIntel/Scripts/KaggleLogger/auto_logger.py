@@ -88,6 +88,11 @@ class SmartKaggleLogger:
     def _write_to_neon(self, message: str, data: Optional[Dict] = None):
         """Write log entry to Neon database"""
         try:
+            # Check if connection is still alive (0 = open, >0 = closed)
+            if self.db_conn.closed != 0:
+                # Connection is closed, silently skip logging
+                return
+                
             cursor = self.db_conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
@@ -106,7 +111,12 @@ class SmartKaggleLogger:
             self.db_conn.commit()
             cursor.close()
         except Exception as e:
-            print(f"⚠️ Logger warning: Could not write to Neon: {e}")
+            # Only show warning for first few errors to avoid spam
+            if not hasattr(self, '_error_count'):
+                self._error_count = 0
+            if self._error_count < 3:
+                print(f"⚠️ Logger warning: Could not write to Neon: {e}")
+                self._error_count += 1
     
     def pre_run_cell(self, info):
         """Hook called before cell execution"""
