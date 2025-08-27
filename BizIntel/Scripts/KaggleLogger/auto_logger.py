@@ -154,7 +154,7 @@ class SmartKaggleLogger:
             cell_data['output_summary'] = self._extract_output_summary(str(result.result))
         
         # Check for specific patterns in the cell code
-        insights = self._extract_insights(self.current_cell, cell_data)
+        insights = self._extract_insights(self.current_cell if self.current_cell else "", cell_data)
         if insights:
             cell_data['insights'] = insights
         
@@ -171,11 +171,14 @@ class SmartKaggleLogger:
         elif execution_time > 30:  # Flag slow cells
             self._write_to_neon(f"CELL_{self.cell_counter}_SLOW", {
                 'execution_time': execution_time,
-                'possible_causes': self._analyze_slow_execution(self.current_cell)
+                'possible_causes': self._analyze_slow_execution(self.current_cell if self.current_cell else "")
             })
     
     def _detect_cell_type(self, cell_code: str) -> str:
         """Detect the type of cell based on its content"""
+        if not cell_code:
+            return 'unknown'
+        
         cell_lower = cell_code.lower()
         
         if 'import' in cell_lower and 'from' in cell_lower:
@@ -233,6 +236,10 @@ class SmartKaggleLogger:
         """Extract actionable insights from cell execution"""
         insights = {}
         
+        # Handle None or empty cell_code
+        if not cell_code:
+            return None
+        
         # Check for common issues
         if 'process_patent' in cell_code and cell_data.get('execution_time', 0) > 10:
             insights['performance_warning'] = 'Patent processing taking longer than expected (>10s)'
@@ -268,6 +275,9 @@ class SmartKaggleLogger:
     def _analyze_slow_execution(self, cell_code: str) -> list:
         """Analyze why a cell might be running slowly"""
         causes = []
+        
+        if not cell_code:
+            return ["Unable to analyze - cell code not captured"]
         
         if 'for' in cell_code and 'process_patent' in cell_code:
             causes.append("Processing patents in a loop - consider batch processing")
