@@ -1,0 +1,50 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Data files
+Data/**/*.csv
+Data/**/*.json
+Data/**/*.xlsx
+*.db
+*.sqlite
+
+# Sensitive
+.env
+.env.*
+config/.env*
+!config/.env.example
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Temporary
+*.tmp
+*.bak
+~*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Keep structure files
+!.gitkeep
+!README.md
