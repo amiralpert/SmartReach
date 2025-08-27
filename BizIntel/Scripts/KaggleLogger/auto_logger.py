@@ -30,8 +30,12 @@ class SmartKaggleLogger:
         Args:
             db_conn: PostgreSQL connection object (optional if db_config provided)
             session_name: Optional name for this session (e.g., 'patent_analysis_v2')
-            db_config: Database configuration dict for auto-reconnection
+            db_config: Database configuration dict for auto-reconnection (REQUIRED)
         """
+        # db_config is now required for reconnection capability
+        if not db_config:
+            raise ValueError("db_config is required for auto-reconnection capability")
+            
         self.db_conn = db_conn
         self.db_config = db_config  # Store for reconnection
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -42,10 +46,9 @@ class SmartKaggleLogger:
         self.cell_outputs = {}
         self.pipeline_version = None
         
-        # If no connection but config provided, create connection
-        if not self.db_conn and self.db_config:
-            import psycopg2
-            self.db_conn = psycopg2.connect(**self.db_config)
+        # Always create a fresh connection using config
+        import psycopg2
+        self.db_conn = psycopg2.connect(**self.db_config)
         
         # Patterns for extracting meaningful information
         self.patterns = {
@@ -94,15 +97,24 @@ class SmartKaggleLogger:
     
     def _ensure_connection(self):
         """Ensure database connection is alive"""
+        import psycopg2
+        
+        # If no connection exists, create one
+        if not self.db_conn:
+            self.db_conn = psycopg2.connect(**self.db_config)
+            return
+        
+        # Test if existing connection is alive
         try:
-            # Test if connection is alive with a simple query
-            if self.db_conn:
-                cursor = self.db_conn.cursor()
-                cursor.execute("SELECT 1")
-                cursor.close()
+            cursor = self.db_conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
         except:
             # Connection is dead, recreate it
-            import psycopg2
+            try:
+                self.db_conn.close()
+            except:
+                pass  # Already closed
             self.db_conn = psycopg2.connect(**self.db_config)
     
     def _write_to_neon(self, message: str, data: Optional[Dict] = None):
