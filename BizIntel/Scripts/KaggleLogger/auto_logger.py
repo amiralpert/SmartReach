@@ -28,16 +28,15 @@ class SmartKaggleLogger:
         Initialize the smart logger
         
         Args:
-            db_conn: PostgreSQL connection object (optional if db_config provided)
+            db_conn: PostgreSQL connection object (deprecated, not used)
             session_name: Optional name for this session (e.g., 'patent_analysis_v2')
-            db_config: Database configuration dict for auto-reconnection (REQUIRED)
+            db_config: Database configuration dict (REQUIRED)
         """
-        # db_config is now required for reconnection capability
+        # db_config is required for connection management
         if not db_config:
-            raise ValueError("db_config is required for auto-reconnection capability")
+            raise ValueError("db_config is required for database connectivity")
             
-        self.db_conn = db_conn
-        self.db_config = db_config  # Store for reconnection
+        self.db_config = db_config  # Store for creating connections
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.session_name = session_name or "unnamed_session"
         self.cell_counter = 0
@@ -45,10 +44,6 @@ class SmartKaggleLogger:
         self.current_cell = None
         self.cell_outputs = {}
         self.pipeline_version = None
-        
-        # Always create a fresh connection using config
-        import psycopg2
-        self.db_conn = psycopg2.connect(**self.db_config)
         
         # Patterns for extracting meaningful information
         self.patterns = {
@@ -95,35 +90,17 @@ class SmartKaggleLogger:
         
         return env
     
-    def _ensure_connection(self):
-        """Ensure database connection is alive"""
+    def _write_to_neon(self, message: str, data: Optional[Dict] = None):
+        """Write log entry to Neon database - creates fresh connection each time"""
         import psycopg2
         
-        # If no connection exists, create one
-        if not self.db_conn:
-            self.db_conn = psycopg2.connect(**self.db_config)
-            return
-        
-        # Test if existing connection is alive
+        conn = None
+        cursor = None
         try:
-            cursor = self.db_conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-        except:
-            # Connection is dead, recreate it
-            try:
-                self.db_conn.close()
-            except:
-                pass  # Already closed
-            self.db_conn = psycopg2.connect(**self.db_config)
-    
-    def _write_to_neon(self, message: str, data: Optional[Dict] = None):
-        """Write log entry to Neon database"""
-        try:
-            # Ensure connection is alive
-            self._ensure_connection()
+            # Create a fresh connection for each write to avoid connection issues
+            conn = psycopg2.connect(**self.db_config)
+            cursor = conn.cursor()
             
-            cursor = self.db_conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
                 (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
@@ -138,36 +115,18 @@ class SmartKaggleLogger:
                 data.get('success') if data else None,
                 data.get('error') if data else None
             ))
-            self.db_conn.commit()
-            cursor.close()
+            conn.commit()
         except Exception as e:
-            # Try to reconnect once if the error is connection-related
-            if 'connection' in str(e).lower() or 'closed' in str(e).lower():
-                try:
-                    import psycopg2
-                    self.db_conn = psycopg2.connect(**self.db_config)
-                    # Retry the write operation
-                    cursor = self.db_conn.cursor()
-                    cursor.execute("""
-                        INSERT INTO core.kaggle_logs 
-                        (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
-                        VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        self.session_id,
-                        self.session_name,
-                        self.cell_counter if self.cell_counter > 0 else None,
-                        message,
-                        json.dumps(data) if data else None,
-                        data.get('execution_time') if data else None,
-                        data.get('success') if data else None,
-                        data.get('error') if data else None
-                    ))
-                    self.db_conn.commit()
+            print(f"⚠️ Logger warning: Could not write to Neon: {e}")
+        finally:
+            # Always close cursor and connection
+            try:
+                if cursor:
                     cursor.close()
-                except Exception as retry_e:
-                    print(f"⚠️ Logger warning: Could not write to Neon after reconnect: {retry_e}")
-            else:
-                print(f"⚠️ Logger warning: Could not write to Neon: {e}")
+                if conn:
+                    conn.close()
+            except:
+                pass  # Ignore cleanup errors
     
     def pre_run_cell(self, info):
         """Hook called before cell execution"""
