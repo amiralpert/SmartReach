@@ -4,8 +4,8 @@ No need for citation extraction - focuses on analysis only
 """
 
 # Pipeline version information
-PIPELINE_VERSION = "v3.1-github"
-LAST_UPDATED = "2024-08-27 05:45 UTC"
+PIPELINE_VERSION = "v3.2-debug"
+LAST_UPDATED = "2025-08-27 23:00 UTC"
 GITHUB_SYNC_ENABLED = True
 
 import psycopg2
