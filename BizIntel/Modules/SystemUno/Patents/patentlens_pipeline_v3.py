@@ -3,6 +3,11 @@ PatentLens Pipeline v3 - Uses pre-extracted citations from database
 No need for citation extraction - focuses on analysis only
 """
 
+# Pipeline version information
+PIPELINE_VERSION = "v3.1-github"
+LAST_UPDATED = "2024-08-27 05:45 UTC"
+GITHUB_SYNC_ENABLED = True
+
 import psycopg2
 import json
 import numpy as np
@@ -11,6 +16,11 @@ from datetime import datetime
 import logging
 from dataclasses import dataclass
 import traceback
+
+# Version announcement
+print(f"🚀 PatentLens Pipeline {PIPELINE_VERSION}")
+print(f"📅 Last updated: {LAST_UPDATED}")
+print(f"🔄 GitHub sync: {'✅ Enabled' if GITHUB_SYNC_ENABLED else '❌ Disabled'}")
 
 # Try to import torch (will be available in Kaggle)
 try:
@@ -210,7 +220,26 @@ class PatentLensPipeline:
         self.embedder = embedder
         self.keyword_manager = KeywordManager(self.db_conn, embedder)
         
+        # Version announcement in initialization
+        print(f"\n{'='*60}")
+        print(f"✨ PatentLens Pipeline {PIPELINE_VERSION} Initialized!")
+        print(f"📊 Database: Connected to {db_config.get('database', 'Unknown')}")
+        print(f"🤖 LLM Model: {'✅ Ready' if llm_model is not None else '❌ Not loaded'}")
+        print(f"🔍 Embedder: {'✅ Ready' if embedder is not None else '❌ Not loaded'}")
+        print(f"🔄 GitHub Sync: {'Enabled - Auto-updates active!' if GITHUB_SYNC_ENABLED else 'Disabled'}")
+        print(f"{'='*60}\n")
+        
         logger.info(f"Pipeline initialized. LLM: {llm_model is not None}, Embedder: {embedder is not None}")
+    
+    def get_version_info(self) -> Dict[str, str]:
+        """Get version information for the pipeline"""
+        return {
+            'version': PIPELINE_VERSION,
+            'last_updated': LAST_UPDATED,
+            'github_sync': 'Enabled' if GITHUB_SYNC_ENABLED else 'Disabled',
+            'llm_loaded': 'Yes' if self.llm_model is not None else 'No',
+            'embedder_loaded': 'Yes' if self.embedder is not None else 'No'
+        }
     
     def get_patents_to_process(self, limit: int = 10) -> List[PatentData]:
         """Fetch patents that need processing"""
