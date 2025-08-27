@@ -58,7 +58,7 @@ LIMIT 50;
 CREATE OR REPLACE FUNCTION core.get_kaggle_session_details(p_session_id VARCHAR)
 RETURNS TABLE (
     cell_number INTEGER,
-    timestamp TIMESTAMP,
+    log_timestamp TIMESTAMP,
     message TEXT,
     execution_time FLOAT,
     success BOOLEAN,

@@ -112,7 +112,7 @@ class SmartKaggleLogger:
         """Hook called before cell execution"""
         self.cell_counter += 1
         self.start_time = time.time()
-        self.current_cell = info.raw_cell if hasattr(info, 'raw_cell') else str(info)
+        self.current_cell = info.raw_cell if hasattr(info, 'raw_cell') else str(info) if info else ""
         
         # Detect cell type
         cell_type = self._detect_cell_type(self.current_cell)
@@ -124,7 +124,12 @@ class SmartKaggleLogger:
     
     def post_run_cell(self, result):
         """Hook called after cell execution"""
-        execution_time = time.time() - self.start_time
+        # Handle case where pre_run_cell wasn't called (e.g., for the setup cell itself)
+        if self.start_time is None:
+            self.start_time = time.time()
+            execution_time = 0.0
+        else:
+            execution_time = time.time() - self.start_time
         
         # Determine success/failure
         success = True
@@ -141,7 +146,7 @@ class SmartKaggleLogger:
             'execution_time': round(execution_time, 3),
             'success': success,
             'error': error_msg,
-            'cell_type': self._detect_cell_type(self.current_cell)
+            'cell_type': self._detect_cell_type(self.current_cell if self.current_cell else "")
         }
         
         # Extract structured data from cell output
