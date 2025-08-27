@@ -557,6 +557,7 @@ JSON:"""
             # Store results in database
             self.store_extraction_results(
                 patent_id=patent.patent_id,
+                patent_number=patent.patent_number,
                 field_description=field_result['field_description'],
                 field_keywords=field_keywords,
                 technical_problem=problems_result['technical_problem'],
@@ -662,7 +663,7 @@ JSON:"""
         finally:
             cursor.close()
     
-    def store_extraction_results(self, patent_id: int, **kwargs):
+    def store_extraction_results(self, patent_id: int, patent_number: str, **kwargs):
         """Store extraction results in database"""
         cursor = self.db_conn.cursor()
         
@@ -720,6 +721,7 @@ JSON:"""
                 cursor.execute("""
                     INSERT INTO system_uno.patents_extracted_knowledge (
                         patent_id,
+                        patent_number,
                         field_description,
                         field_keyword_ids,
                         technical_problem,
@@ -735,9 +737,10 @@ JSON:"""
                         clinical_problem_embedding,
                         solution_embedding,
                         claims_embedding
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     patent_id,
+                    patent_number,
                     kwargs.get('field_description'),
                     kwargs.get('field_keywords', []),
                     kwargs.get('technical_problem'),
