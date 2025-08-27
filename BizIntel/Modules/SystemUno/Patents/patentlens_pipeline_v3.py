@@ -667,6 +667,17 @@ JSON:"""
         """Store extraction results in database"""
         cursor = self.db_conn.cursor()
         
+        print(f"\n=== ATTEMPTING TO STORE EXTRACTION RESULTS ===")
+        print(f"Patent ID: {patent_id}")
+        print(f"Patent Number: {patent_number}")
+        print(f"Field keywords: {kwargs.get('field_keywords', [])}")
+        print(f"Tech keywords: {kwargs.get('technical_keywords', [])}")
+        print(f"Clinical keywords: {kwargs.get('clinical_keywords', [])}")
+        print(f"Solution keywords: {kwargs.get('solution_keywords', [])}")
+        print(f"Cited patents: {kwargs.get('cited_patents', [])}")
+        print(f"Cited papers: {kwargs.get('cited_papers', [])}")
+        print(f"Has embeddings: {bool(kwargs.get('embeddings'))}")
+        
         try:
             # Check if record exists
             cursor.execute("""
@@ -718,6 +729,33 @@ JSON:"""
                 ))
             else:
                 # Insert new record
+                print(f"\nPreparing INSERT for new record...")
+                
+                # Prepare values for debugging
+                insert_values = (
+                    patent_id,
+                    patent_number,
+                    kwargs.get('field_description'),
+                    kwargs.get('field_keywords', []),
+                    kwargs.get('technical_problem'),
+                    kwargs.get('technical_keywords', []),
+                    kwargs.get('clinical_problem'),
+                    kwargs.get('clinical_keywords', []),
+                    kwargs.get('solution_approach'),
+                    kwargs.get('solution_keywords', []),
+                    kwargs.get('cited_patents', []),
+                    kwargs.get('cited_papers', []),
+                    kwargs.get('embeddings', {}).get('field_embedding'),
+                    kwargs.get('embeddings', {}).get('technical_problem_embedding'),
+                    kwargs.get('embeddings', {}).get('clinical_problem_embedding'),
+                    kwargs.get('embeddings', {}).get('solution_embedding'),
+                    kwargs.get('embeddings', {}).get('claims_embedding')
+                )
+                
+                print(f"Insert values (first 5): {insert_values[:5]}")
+                print(f"Field desc length: {len(str(insert_values[2])) if insert_values[2] else 0}")
+                print(f"Has embeddings: field={insert_values[12] is not None}, tech={insert_values[13] is not None}")
+                
                 cursor.execute("""
                     INSERT INTO system_uno.patents_extracted_knowledge (
                         patent_id,
@@ -738,31 +776,34 @@ JSON:"""
                         solution_embedding,
                         claims_embedding
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    patent_id,
-                    patent_number,
-                    kwargs.get('field_description'),
-                    kwargs.get('field_keywords', []),
-                    kwargs.get('technical_problem'),
-                    kwargs.get('technical_keywords', []),
-                    kwargs.get('clinical_problem'),
-                    kwargs.get('clinical_keywords', []),
-                    kwargs.get('solution_approach'),
-                    kwargs.get('solution_keywords', []),
-                    kwargs.get('cited_patents', []),
-                    kwargs.get('cited_papers', []),
-                    kwargs.get('embeddings', {}).get('field_embedding'),
-                    kwargs.get('embeddings', {}).get('technical_problem_embedding'),
-                    kwargs.get('embeddings', {}).get('clinical_problem_embedding'),
-                    kwargs.get('embeddings', {}).get('solution_embedding'),
-                    kwargs.get('embeddings', {}).get('claims_embedding')
-                ))
+                """, insert_values)
+                
+                print(f"✓ INSERT executed successfully")
             
             self.db_conn.commit()
+            print(f"✓ Successfully committed to database!")
+            
+            # Verify the insert worked
+            verify_cursor = self.db_conn.cursor()
+            verify_cursor.execute("""
+                SELECT extraction_id, patent_number 
+                FROM system_uno.patents_extracted_knowledge 
+                WHERE patent_number = %s
+            """, (patent_number,))
+            result = verify_cursor.fetchone()
+            if result:
+                print(f"✓ VERIFIED: Record saved with extraction_id={result[0]} for patent {result[1]}")
+            else:
+                print(f"✗ WARNING: Record not found after insert for patent {patent_number}")
+            verify_cursor.close()
             
         except Exception as e:
             self.db_conn.rollback()
+            print(f"\n✗ ERROR storing extraction results: {e}")
+            print(f"Error type: {type(e).__name__}")
             logger.error(f"Error storing extraction results: {e}")
+            # Re-raise the error so it's not silent
+            raise
         finally:
             cursor.close()
     
