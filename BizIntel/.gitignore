@@ -38,7 +38,12 @@ Data/output/
 *.csv
 *.xlsx
 *.json
+# SQL files (except setup scripts)
 *.sql
+!create_schema.sql
+!setup_database.sql
+!test_data.sql
+!create_kaggle_logs_table.sql
 *.db
 *.sqlite
 
