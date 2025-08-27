@@ -23,20 +23,15 @@ except ImportError:
 class SmartKaggleLogger:
     """Intelligent logger that captures and structures Kaggle cell execution data"""
     
-    def __init__(self, db_conn=None, session_name: str = None, db_config: Dict = None):
+    def __init__(self, db_conn, session_name: str = None):
         """
         Initialize the smart logger
         
         Args:
-            db_conn: PostgreSQL connection object (deprecated, not used)
+            db_conn: PostgreSQL connection object
             session_name: Optional name for this session (e.g., 'patent_analysis_v2')
-            db_config: Database configuration dict (REQUIRED)
         """
-        # db_config is required for connection management
-        if not db_config:
-            raise ValueError("db_config is required for database connectivity")
-            
-        self.db_config = db_config  # Store for creating connections
+        self.db_conn = db_conn
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.session_name = session_name or "unnamed_session"
         self.cell_counter = 0
@@ -91,16 +86,9 @@ class SmartKaggleLogger:
         return env
     
     def _write_to_neon(self, message: str, data: Optional[Dict] = None):
-        """Write log entry to Neon database - creates fresh connection each time"""
-        import psycopg2
-        
-        conn = None
-        cursor = None
+        """Write log entry to Neon database"""
         try:
-            # Create a fresh connection for each write to avoid connection issues
-            conn = psycopg2.connect(**self.db_config)
-            cursor = conn.cursor()
-            
+            cursor = self.db_conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
                 (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
@@ -115,18 +103,10 @@ class SmartKaggleLogger:
                 data.get('success') if data else None,
                 data.get('error') if data else None
             ))
-            conn.commit()
+            self.db_conn.commit()
+            cursor.close()
         except Exception as e:
             print(f"⚠️ Logger warning: Could not write to Neon: {e}")
-        finally:
-            # Always close cursor and connection
-            try:
-                if cursor:
-                    cursor.close()
-                if conn:
-                    conn.close()
-            except:
-                pass  # Ignore cleanup errors
     
     def pre_run_cell(self, info):
         """Hook called before cell execution"""
@@ -350,24 +330,21 @@ class SmartKaggleLogger:
         self._write_to_neon(f"MANUAL: {message}", data)
 
 
-def setup_auto_logging(db_conn=None, session_name: str = None, db_config: Dict = None) -> SmartKaggleLogger:
+def setup_auto_logging(db_conn, session_name: str = None) -> SmartKaggleLogger:
     """
     One-line setup for smart auto-logging
     
     Args:
-        db_conn: PostgreSQL connection object (optional if db_config provided)
+        db_conn: PostgreSQL connection object
         session_name: Optional name for this session
-        db_config: Database configuration dict for auto-reconnection
     
     Returns:
         SmartKaggleLogger instance
     
     Example:
         logger = setup_auto_logging(conn, "patent_analysis_run_5")
-        # OR with config for auto-reconnection:
-        logger = setup_auto_logging(session_name="patent_analysis", db_config=NEON_CONFIG)
     """
-    logger = SmartKaggleLogger(db_conn, session_name, db_config)
+    logger = SmartKaggleLogger(db_conn, session_name)
     logger.register_hooks()
     logger.capture_stdout()
     
