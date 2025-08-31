@@ -201,7 +201,7 @@ class SmartKaggleLogger:
     def _extract_cell_number(self, cell_code: str) -> int:
         """Extract cell number from first line comment (e.g., '# Cell 4:')"""
         if not cell_code:
-            return self.cell_counter
+            return 999  # Unknown cell marker
         
         # Look for pattern like "# Cell 4:" or "# Cell 4 -" or "# Cell 4 "
         first_line = cell_code.split('\n')[0].strip()
@@ -211,8 +211,8 @@ class SmartKaggleLogger:
         if cell_match:
             return int(cell_match.group(1))
         
-        # Fallback to execution counter if no cell number found
-        return self.cell_counter
+        # If no cell number found, use 999 as unknown marker instead of counter
+        return 999
 
     def _detect_cell_type(self, cell_code: str) -> str:
         """Detect the type of cell based on its content"""
