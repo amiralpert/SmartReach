@@ -92,7 +92,15 @@ class SmartKaggleLogger:
             if self.db_conn.closed != 0:
                 # Connection is closed, silently skip logging
                 return
-                
+            
+            # Extract cell number from message if present
+            cell_number = None
+            if 'CELL_' in message:
+                import re
+                cell_match = re.search(r'CELL_(\d+)', message)
+                if cell_match:
+                    cell_number = int(cell_match.group(1))
+                    
             cursor = self.db_conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
@@ -101,7 +109,7 @@ class SmartKaggleLogger:
             """, (
                 self.session_id,
                 self.session_name,
-                self.cell_counter if self.cell_counter > 0 else None,
+                cell_number,
                 message,
                 json.dumps(data) if data else None,
                 data.get('execution_time') if data else None,
@@ -124,10 +132,13 @@ class SmartKaggleLogger:
         self.start_time = time.time()
         self.current_cell = info.raw_cell if hasattr(info, 'raw_cell') else str(info) if info else ""
         
+        # Extract actual cell number from first line comment
+        actual_cell_number = self._extract_cell_number(self.current_cell)
+        
         # Detect cell type
         cell_type = self._detect_cell_type(self.current_cell)
         
-        self._write_to_neon(f"CELL_{self.cell_counter}_START", {
+        self._write_to_neon(f"CELL_{actual_cell_number}_START", {
             'cell_type': cell_type,
             'cell_preview': self.current_cell[:200] if len(self.current_cell) > 200 else self.current_cell
         })
@@ -140,6 +151,9 @@ class SmartKaggleLogger:
             execution_time = 0.0
         else:
             execution_time = time.time() - self.start_time
+        
+        # Extract actual cell number from current cell content
+        actual_cell_number = self._extract_cell_number(self.current_cell if self.current_cell else "")
         
         # Determine success/failure
         success = True
@@ -169,21 +183,37 @@ class SmartKaggleLogger:
             cell_data['insights'] = insights
         
         # Log the cell execution
-        self._write_to_neon(f"CELL_{self.cell_counter}_COMPLETE", cell_data)
+        self._write_to_neon(f"CELL_{actual_cell_number}_COMPLETE", cell_data)
         
         # Alert on errors or slow execution
         if not success:
-            self._write_to_neon(f"CELL_{self.cell_counter}_ERROR", {
+            self._write_to_neon(f"CELL_{actual_cell_number}_ERROR", {
                 'error_type': type(result.error_in_exec).__name__ if result.error_in_exec else 'Unknown',
                 'error_message': error_msg,
                 'suggested_fix': self._suggest_fix(error_msg)
             })
         elif execution_time > 30:  # Flag slow cells
-            self._write_to_neon(f"CELL_{self.cell_counter}_SLOW", {
+            self._write_to_neon(f"CELL_{actual_cell_number}_SLOW", {
                 'execution_time': execution_time,
                 'possible_causes': self._analyze_slow_execution(self.current_cell if self.current_cell else "")
             })
     
+    def _extract_cell_number(self, cell_code: str) -> int:
+        """Extract cell number from first line comment (e.g., '# Cell 4:')"""
+        if not cell_code:
+            return self.cell_counter
+        
+        # Look for pattern like "# Cell 4:" or "# Cell 4 -" or "# Cell 4 "
+        first_line = cell_code.split('\n')[0].strip()
+        
+        import re
+        cell_match = re.search(r'#\s*Cell\s+(\d+)', first_line, re.IGNORECASE)
+        if cell_match:
+            return int(cell_match.group(1))
+        
+        # Fallback to execution counter if no cell number found
+        return self.cell_counter
+
     def _detect_cell_type(self, cell_code: str) -> str:
         """Detect the type of cell based on its content"""
         if not cell_code:
