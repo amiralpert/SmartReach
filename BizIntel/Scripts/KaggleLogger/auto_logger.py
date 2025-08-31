@@ -230,8 +230,7 @@ class CleanKaggleLogger:
                 }),
                 round(duration, 3),
                 success,
-                error_message
-            ), (
+                error_message,
                 self.session_id,
                 self.current_execution
             ))
