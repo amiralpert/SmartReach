@@ -1,6 +1,6 @@
 """
-Smart Kaggle Auto-Logger for SmartReach Pipeline
-Automatically captures all cell executions and logs structured data to Neon
+Clean Kaggle Auto-Logger for SmartReach Pipeline
+Captures complete cell executions with full output in a single, clean log entry per execution
 """
 
 import json
@@ -8,6 +8,7 @@ import time
 import re
 import sys
 import traceback
+import uuid
 from datetime import datetime
 from io import StringIO
 from typing import Dict, Any, Optional
@@ -20,87 +21,154 @@ except ImportError:
     IPYTHON_AVAILABLE = False
 
 
-class SmartKaggleLogger:
-    """Intelligent logger that captures and structures Kaggle cell execution data"""
+class CleanKaggleLogger:
+    """Simple, clean logger that captures complete cell execution data in one row"""
     
     def __init__(self, db_conn, session_name: str = None):
         """
-        Initialize the smart logger
+        Initialize the clean logger
         
         Args:
             db_conn: PostgreSQL connection object
-            session_name: Optional name for this session (e.g., 'patent_analysis_v2')
+            session_name: Name for this session (e.g., 'SEC_EntityExtraction')
         """
         self.db_conn = db_conn
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.session_name = session_name or "unnamed_session"
-        self.cell_counter = 0
+        
+        # Current execution tracking
+        self.current_execution = None
+        self.current_cell_code = ""
         self.start_time = None
-        self.current_cell = None
-        self.cell_outputs = {}
-        self.pipeline_version = None
+        self.output_buffer = StringIO()
+        self.original_stdout = sys.stdout
+        self.original_stderr = sys.stderr
         
-        # Patterns for extracting meaningful information
-        self.patterns = {
-            'patent_processed': r'(?:Patent|patent)\s+(\d+)\s+(?:processed|complete)',
-            'success_count': r'✓|Success|Processed successfully',
-            'error_count': r'✗|Error|Failed|Exception',
-            'processing_time': r'(?:took|completed in|execution time:)\s*([\d.]+)\s*(?:seconds|s)',
-            'memory_usage': r'(?:memory|Memory).*?(\d+\.?\d*)\s*(?:MB|GB)',
-            'gpu_usage': r'GPU.*?(\d+\.?\d*)%',
-            'pipeline_init': r'Pipeline.*initialized|PatentLens Pipeline',
-            'database_connected': r'Database connected|Connected to',
-            'model_loaded': r'Model loaded|✓.*model',
-        }
+        # Hook registration tracking to prevent duplicates
+        self.hooks_registered = False
         
-        # Track session metadata
+        # Log session start
         self._log_session_start()
     
     def _log_session_start(self):
         """Log the start of a new session"""
-        data = {
-            'session_name': self.session_name,
-            'start_time': datetime.now().isoformat(),
-            'environment': self._detect_environment()
-        }
-        self._write_to_neon("SESSION_START", data)
-    
-    def _detect_environment(self) -> Dict[str, Any]:
-        """Detect the current Kaggle environment"""
-        env = {
-            'platform': 'Kaggle',
-            'python_version': sys.version.split()[0]
-        }
-        
-        # Check for GPU
         try:
-            import torch
-            env['torch_available'] = True
-            env['cuda_available'] = torch.cuda.is_available()
-            if torch.cuda.is_available():
-                env['gpu_name'] = torch.cuda.get_device_name(0)
-        except ImportError:
-            env['torch_available'] = False
-            env['cuda_available'] = False
-        
-        return env
+            cursor = self.db_conn.cursor()
+            cursor.execute("""
+                INSERT INTO core.kaggle_logs 
+                (timestamp, session_id, session_name, cell_number, message, data)
+                VALUES (NOW(), %s, %s, NULL, %s, %s)
+            """, (
+                self.session_id,
+                self.session_name,
+                "SESSION_START",
+                json.dumps({
+                    'session_name': self.session_name,
+                    'start_time': datetime.now().isoformat(),
+                    'python_version': sys.version.split()[0]
+                })
+            ))
+            self.db_conn.commit()
+            cursor.close()
+        except Exception as e:
+            print(f"⚠️ Logger warning: Could not log session start: {e}")
     
-    def _write_to_neon(self, message: str, data: Optional[Dict] = None):
-        """Write log entry to Neon database"""
-        try:
-            # Check if connection is still alive (0 = open, >0 = closed)
-            if self.db_conn.closed != 0:
-                # Connection is closed, silently skip logging
-                return
+    def _extract_cell_number(self, cell_code: str) -> Optional[int]:
+        """Extract cell number from first line comment (e.g., '# Cell 4:')"""
+        if not cell_code:
+            return None
+        
+        first_line = cell_code.split('\n')[0].strip()
+        cell_match = re.search(r'#\s*Cell\s+(\d+)', first_line, re.IGNORECASE)
+        if cell_match:
+            return int(cell_match.group(1))
+        
+        return None
+    
+    def _capture_output(self):
+        """Capture stdout/stderr during cell execution"""
+        class OutputCapture:
+            def __init__(self, logger, original, buffer):
+                self.logger = logger
+                self.original = original
+                self.buffer = buffer
             
-            # Extract cell number from message if present
-            cell_number = None
-            if 'CELL_' in message:
-                import re
-                cell_match = re.search(r'CELL_(\d+)', message)
-                if cell_match:
-                    cell_number = int(cell_match.group(1))
-                    
+            def write(self, text):
+                self.original.write(text)  # Still show in notebook
+                self.buffer.write(text)    # Capture for logging
+                self.original.flush()
+            
+            def flush(self):
+                self.original.flush()
+        
+        # Replace stdout and stderr with capturing versions
+        sys.stdout = OutputCapture(self, self.original_stdout, self.output_buffer)
+        sys.stderr = OutputCapture(self, self.original_stderr, self.output_buffer)
+    
+    def _restore_output(self):
+        """Restore original stdout/stderr"""
+        sys.stdout = self.original_stdout
+        sys.stderr = self.original_stderr
+    
+    def pre_run_cell(self, info):
+        """Hook called before cell execution - start tracking"""
+        if self.current_execution:
+            # Previous execution didn't complete properly, log it as failed
+            self._log_execution(
+                success=False,
+                error="Execution interrupted by new cell",
+                complete_output=self.output_buffer.getvalue()
+            )
+        
+        # Start new execution tracking
+        self.current_execution = str(uuid.uuid4())
+        self.current_cell_code = info.raw_cell if hasattr(info, 'raw_cell') else str(info) if info else ""
+        self.start_time = datetime.now()
+        self.output_buffer = StringIO()  # Reset output buffer
+        
+        # Start capturing output
+        self._capture_output()
+        
+        # Log execution start
+        cell_number = self._extract_cell_number(self.current_cell_code)
+        self._insert_execution_start(cell_number)
+    
+    def post_run_cell(self, result):
+        """Hook called after cell execution - complete tracking"""
+        if not self.current_execution:
+            return  # No execution to complete
+        
+        # Stop capturing output
+        self._restore_output()
+        
+        # Get complete output
+        complete_output = self.output_buffer.getvalue()
+        
+        # Determine success/failure
+        success = True
+        error_message = None
+        
+        if hasattr(result, 'error_in_exec') and result.error_in_exec:
+            success = False
+            error_message = str(result.error_in_exec)
+            # Add traceback if available
+            if hasattr(result.error_in_exec, '__traceback__'):
+                error_message += "\n" + ''.join(traceback.format_tb(result.error_in_exec.__traceback__))
+        elif hasattr(result, 'error_before_exec') and result.error_before_exec:
+            success = False
+            error_message = str(result.error_before_exec)
+        
+        # Log the completed execution
+        self._log_execution(success, error_message, complete_output)
+        
+        # Clear current execution
+        self.current_execution = None
+        self.current_cell_code = ""
+        self.start_time = None
+    
+    def _insert_execution_start(self, cell_number: Optional[int]):
+        """Insert initial execution record"""
+        try:
             cursor = self.db_conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
@@ -110,287 +178,120 @@ class SmartKaggleLogger:
                 self.session_id,
                 self.session_name,
                 cell_number,
-                message,
-                json.dumps(data) if data else None,
-                data.get('execution_time') if data else None,
-                data.get('success') if data else None,
-                data.get('error') if data else None
+                f"CELL_{cell_number}_EXECUTING" if cell_number else "CELL_UNKNOWN_EXECUTING",
+                json.dumps({
+                    'execution_id': self.current_execution,
+                    'cell_code': self.current_cell_code[:1000] + ('...' if len(self.current_cell_code) > 1000 else ''),
+                    'started_at': self.start_time.isoformat(),
+                    'status': 'running'
+                }),
+                None,  # execution_time (will be updated when complete)
+                None,  # success (will be updated when complete)
+                None   # error (will be updated if error occurs)
             ))
             self.db_conn.commit()
             cursor.close()
         except Exception as e:
-            # Only show warning for first few errors to avoid spam
-            if not hasattr(self, '_error_count'):
-                self._error_count = 0
-            if self._error_count < 3:
-                print(f"⚠️ Logger warning: Could not write to Neon: {e}")
-                self._error_count += 1
+            print(f"⚠️ Logger warning: Could not log execution start: {e}")
     
-    def pre_run_cell(self, info):
-        """Hook called before cell execution"""
-        self.cell_counter += 1
-        self.start_time = time.time()
-        self.current_cell = info.raw_cell if hasattr(info, 'raw_cell') else str(info) if info else ""
-        
-        # Extract actual cell number from first line comment
-        actual_cell_number = self._extract_cell_number(self.current_cell)
-        
-        # Detect cell type
-        cell_type = self._detect_cell_type(self.current_cell)
-        
-        self._write_to_neon(f"CELL_{actual_cell_number}_START", {
-            'cell_type': cell_type,
-            'cell_preview': self.current_cell[:200] if len(self.current_cell) > 200 else self.current_cell
-        })
-    
-    def post_run_cell(self, result):
-        """Hook called after cell execution"""
-        # Handle case where pre_run_cell wasn't called (e.g., for the setup cell itself)
-        if self.start_time is None:
-            self.start_time = time.time()
-            execution_time = 0.0
-        else:
-            execution_time = time.time() - self.start_time
-        
-        # Extract actual cell number from current cell content
-        actual_cell_number = self._extract_cell_number(self.current_cell if self.current_cell else "")
-        
-        # Determine success/failure
-        success = True
-        error_msg = None
-        if hasattr(result, 'error_in_exec') and result.error_in_exec:
-            success = False
-            error_msg = str(result.error_in_exec)
-        elif hasattr(result, 'error_before_exec') and result.error_before_exec:
-            success = False
-            error_msg = str(result.error_before_exec)
-        
-        # Extract meaningful information from output
-        cell_data = {
-            'execution_time': round(execution_time, 3),
-            'success': success,
-            'error': error_msg,
-            'cell_type': self._detect_cell_type(self.current_cell if self.current_cell else "")
-        }
-        
-        # Extract structured data from cell output
-        if hasattr(result, 'result') and result.result:
-            cell_data['output_summary'] = self._extract_output_summary(str(result.result))
-        
-        # Check for specific patterns in the cell code
-        insights = self._extract_insights(self.current_cell if self.current_cell else "", cell_data)
-        if insights:
-            cell_data['insights'] = insights
-        
-        # Log the cell execution
-        self._write_to_neon(f"CELL_{actual_cell_number}_COMPLETE", cell_data)
-        
-        # Alert on errors or slow execution
-        if not success:
-            self._write_to_neon(f"CELL_{actual_cell_number}_ERROR", {
-                'error_type': type(result.error_in_exec).__name__ if result.error_in_exec else 'Unknown',
-                'error_message': error_msg,
-                'suggested_fix': self._suggest_fix(error_msg)
-            })
-        elif execution_time > 30:  # Flag slow cells
-            self._write_to_neon(f"CELL_{actual_cell_number}_SLOW", {
-                'execution_time': execution_time,
-                'possible_causes': self._analyze_slow_execution(self.current_cell if self.current_cell else "")
-            })
-    
-    def _extract_cell_number(self, cell_code: str) -> int:
-        """Extract cell number from first line comment (e.g., '# Cell 4:')"""
-        if not cell_code:
-            return 999  # Unknown cell marker
-        
-        # Look for pattern like "# Cell 4:" or "# Cell 4 -" or "# Cell 4 "
-        first_line = cell_code.split('\n')[0].strip()
-        
-        import re
-        cell_match = re.search(r'#\s*Cell\s+(\d+)', first_line, re.IGNORECASE)
-        if cell_match:
-            return int(cell_match.group(1))
-        
-        # If no cell number found, use 999 as unknown marker instead of counter
-        return 999
-
-    def _detect_cell_type(self, cell_code: str) -> str:
-        """Detect the type of cell based on its content"""
-        if not cell_code:
-            return 'unknown'
-        
-        cell_lower = cell_code.lower()
-        
-        if 'import' in cell_lower and 'from' in cell_lower:
-            return 'imports'
-        elif 'pipeline' in cell_lower and 'patentlens' in cell_lower:
-            return 'pipeline_init'
-        elif 'process_patent' in cell_lower or 'analyze' in cell_lower:
-            return 'processing'
-        elif 'plot' in cell_lower or 'plt.' in cell_code:
-            return 'visualization'
-        elif 'to_csv' in cell_lower or 'export' in cell_lower:
-            return 'export'
-        elif 'test' in cell_lower:
-            return 'testing'
-        elif 'select' in cell_lower and 'from' in cell_lower:
-            return 'database_query'
-        else:
-            return 'analysis'
-    
-    def _extract_output_summary(self, output: str) -> Dict[str, Any]:
-        """Extract meaningful summary from cell output"""
-        summary = {}
-        
-        # Count success/error indicators
-        success_count = len(re.findall(self.patterns['success_count'], output))
-        error_count = len(re.findall(self.patterns['error_count'], output))
-        
-        if success_count > 0 or error_count > 0:
-            summary['success_count'] = success_count
-            summary['error_count'] = error_count
-            summary['success_rate'] = success_count / (success_count + error_count) if (success_count + error_count) > 0 else 0
-        
-        # Extract patent processing info
-        patent_matches = re.findall(self.patterns['patent_processed'], output)
-        if patent_matches:
-            summary['patents_processed'] = patent_matches
-        
-        # Extract timing information
-        time_matches = re.findall(self.patterns['processing_time'], output)
-        if time_matches:
-            summary['reported_times'] = [float(t) for t in time_matches]
-        
-        # Check for pipeline initialization
-        if re.search(self.patterns['pipeline_init'], output):
-            summary['pipeline_initialized'] = True
-            # Extract version if present
-            version_match = re.search(r'v([\d.]+(?:-\w+)?)', output)
-            if version_match:
-                self.pipeline_version = version_match.group(1)
-                summary['pipeline_version'] = self.pipeline_version
-        
-        return summary if summary else None
-    
-    def _extract_insights(self, cell_code: str, cell_data: Dict) -> Dict[str, Any]:
-        """Extract actionable insights from cell execution"""
-        insights = {}
-        
-        # Handle None or empty cell_code
-        if not cell_code:
-            return None
-        
-        # Check for common issues
-        if 'process_patent' in cell_code and cell_data.get('execution_time', 0) > 10:
-            insights['performance_warning'] = 'Patent processing taking longer than expected (>10s)'
-        
-        if 'import' in cell_code and not cell_data.get('success'):
-            insights['import_failure'] = 'Module import failed - check dependencies'
-        
-        if 'conn' in cell_code and 'psycopg2' in cell_code:
-            insights['database_operation'] = 'Database connection/query detected'
-        
-        return insights if insights else None
-    
-    def _suggest_fix(self, error_msg: str) -> str:
-        """Suggest fixes for common errors"""
-        if not error_msg:
-            return None
-        
-        error_lower = error_msg.lower()
-        
-        if 'module' in error_lower and 'not found' in error_lower:
-            return "Module not found - try: !pip install <module_name>"
-        elif 'connection' in error_lower or 'psycopg2' in error_lower:
-            return "Database connection issue - check NEON_CONFIG credentials and connection"
-        elif 'keyerror' in error_lower:
-            return "KeyError - check that the dictionary key exists before accessing"
-        elif 'cuda' in error_lower or 'gpu' in error_lower:
-            return "GPU error - verify CUDA availability with torch.cuda.is_available()"
-        elif 'memory' in error_lower:
-            return "Memory error - try processing smaller batches or clear cache with torch.cuda.empty_cache()"
-        else:
-            return None
-    
-    def _analyze_slow_execution(self, cell_code: str) -> list:
-        """Analyze why a cell might be running slowly"""
-        causes = []
-        
-        if not cell_code:
-            return ["Unable to analyze - cell code not captured"]
-        
-        if 'for' in cell_code and 'process_patent' in cell_code:
-            causes.append("Processing patents in a loop - consider batch processing")
-        if 'embedding' in cell_code.lower() or 'encode' in cell_code:
-            causes.append("Embedding generation can be slow - ensure GPU is being used")
-        if 'model.generate' in cell_code:
-            causes.append("LLM generation is computationally intensive")
-        if 'to_sql' in cell_code or 'execute' in cell_code:
-            causes.append("Database operations - check query optimization")
-        
-        return causes if causes else ["No obvious causes detected"]
-    
-    def capture_stdout(self):
-        """Capture and log stdout (print statements)"""
-        class OutputCapture:
-            def __init__(self, logger, original):
-                self.logger = logger
-                self.original = original
-                self.buffer = StringIO()
+    def _log_execution(self, success: bool, error_message: Optional[str], complete_output: str):
+        """Update execution record with completion data"""
+        try:
+            end_time = datetime.now()
+            duration = (end_time - self.start_time).total_seconds() if self.start_time else 0
+            cell_number = self._extract_cell_number(self.current_cell_code)
             
-            def write(self, text):
-                self.original.write(text)  # Still show in notebook
-                self.buffer.write(text)
-                
-                # Log important outputs
-                if any(keyword in text for keyword in ['✓', '✗', 'Error', 'Complete', 'Success']):
-                    self.logger._write_to_neon("OUTPUT", {'content': text.strip()})
+            cursor = self.db_conn.cursor()
             
-            def flush(self):
-                self.original.flush()
-        
-        sys.stdout = OutputCapture(self, sys.stdout)
+            # Update the existing record
+            cursor.execute("""
+                UPDATE core.kaggle_logs 
+                SET 
+                    message = %s,
+                    data = %s,
+                    execution_time = %s,
+                    success = %s,
+                    error = %s,
+                    timestamp = NOW()
+                WHERE session_id = %s 
+                AND data->>'execution_id' = %s
+            """, (
+                f"CELL_{cell_number}_COMPLETE" if cell_number else "CELL_UNKNOWN_COMPLETE",
+                json.dumps({
+                    'execution_id': self.current_execution,
+                    'cell_number': cell_number,
+                    'cell_code': self.current_cell_code,
+                    'started_at': self.start_time.isoformat(),
+                    'completed_at': end_time.isoformat(),
+                    'duration_seconds': round(duration, 3),
+                    'status': 'completed' if success else 'failed',
+                    'complete_output': complete_output,
+                    'output_length': len(complete_output)
+                }),
+                round(duration, 3),
+                success,
+                error_message
+            ), (
+                self.session_id,
+                self.current_execution
+            ))
+            
+            self.db_conn.commit()
+            cursor.close()
+            
+        except Exception as e:
+            print(f"⚠️ Logger warning: Could not log execution completion: {e}")
     
     def register_hooks(self):
-        """Register IPython hooks for automatic logging"""
+        """Register IPython hooks for automatic logging (only once)"""
         if not IPYTHON_AVAILABLE:
-            print("⚠️ IPython not available - auto-logging limited")
+            print("⚠️ IPython not available - logging disabled")
+            return
+        
+        if self.hooks_registered:
+            print("⚠️ Hooks already registered - skipping duplicate registration")
             return
         
         ip = get_ipython()
         if ip:
+            # Unregister any existing hooks first
+            try:
+                ip.events.unregister('pre_run_cell', self.pre_run_cell)
+                ip.events.unregister('post_run_cell', self.post_run_cell)
+            except ValueError:
+                pass  # No existing hooks to unregister
+            
+            # Register new hooks
             ip.events.register('pre_run_cell', self.pre_run_cell)
             ip.events.register('post_run_cell', self.post_run_cell)
-            print(f"✅ Smart logging registered for session: {self.session_name}")
+            self.hooks_registered = True
+            
+            print(f"✅ Clean logging enabled for session: {self.session_name}")
+            print(f"📊 Session ID: {self.session_id}")
         else:
             print("⚠️ Could not register IPython hooks")
-    
-    def manual_log(self, message: str, data: Dict = None):
-        """Manual logging for important events"""
-        self._write_to_neon(f"MANUAL: {message}", data)
 
 
-def setup_auto_logging(db_conn, session_name: str = None) -> SmartKaggleLogger:
+def setup_clean_logging(db_conn, session_name: str = None) -> CleanKaggleLogger:
     """
-    One-line setup for smart auto-logging
+    Set up clean auto-logging with complete output capture
     
     Args:
         db_conn: PostgreSQL connection object
-        session_name: Optional name for this session
+        session_name: Name for this logging session
     
     Returns:
-        SmartKaggleLogger instance
+        CleanKaggleLogger instance
     
     Example:
-        logger = setup_auto_logging(conn, "patent_analysis_run_5")
+        logger = setup_clean_logging(conn, "SEC_EntityExtraction")
     """
-    logger = SmartKaggleLogger(db_conn, session_name)
+    logger = CleanKaggleLogger(db_conn, session_name)
     logger.register_hooks()
-    logger.capture_stdout()
     
-    print(f"🔍 Smart auto-logging enabled!")
-    print(f"📊 Session: {logger.session_id}")
-    print(f"📝 Name: {logger.session_name}")
-    print(f"💾 Logging to: core.kaggle_logs")
+    print(f"🔍 Clean auto-logging initialized!")
+    print(f"📝 Session: {logger.session_name}")
+    print(f"💾 All output will be captured in: core.kaggle_logs")
+    print(f"✨ One clean row per cell execution with complete output")
     
     return logger
