@@ -24,15 +24,15 @@ except ImportError:
 class CleanKaggleLogger:
     """Simple, clean logger that captures complete cell execution data in one row"""
     
-    def __init__(self, db_conn, session_name: str = None):
+    def __init__(self, db_manager, session_name: str = None):
         """
         Initialize the clean logger
         
         Args:
-            db_conn: PostgreSQL connection object
+            db_manager: Database manager with connection pooling
             session_name: Name for this session (e.g., 'SEC_EntityExtraction')
         """
-        self.db_conn = db_conn
+        self.db_manager = db_manager
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.session_name = session_name or "unnamed_session"
         
@@ -53,7 +53,8 @@ class CleanKaggleLogger:
     def _log_session_start(self):
         """Log the start of a new session"""
         try:
-            cursor = self.db_conn.cursor()
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
                 (timestamp, session_id, session_name, cell_number, message, data)
@@ -68,8 +69,8 @@ class CleanKaggleLogger:
                     'python_version': sys.version.split()[0]
                 })
             ))
-            self.db_conn.commit()
-            cursor.close()
+                conn.commit()
+                cursor.close()
         except Exception as e:
             print(f"⚠️ Logger warning: Could not log session start: {e}")
     
@@ -169,7 +170,8 @@ class CleanKaggleLogger:
     def _insert_execution_start(self, cell_number: Optional[int]):
         """Insert initial execution record"""
         try:
-            cursor = self.db_conn.cursor()
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO core.kaggle_logs 
                 (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
@@ -189,8 +191,8 @@ class CleanKaggleLogger:
                 None,  # success (will be updated when complete)
                 None   # error (will be updated if error occurs)
             ))
-            self.db_conn.commit()
-            cursor.close()
+                conn.commit()
+                cursor.close()
         except Exception as e:
             print(f"⚠️ Logger warning: Could not log execution start: {e}")
     
@@ -201,7 +203,8 @@ class CleanKaggleLogger:
             duration = (end_time - self.start_time).total_seconds() if self.start_time else 0
             cell_number = self._extract_cell_number(self.current_cell_code)
             
-            cursor = self.db_conn.cursor()
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
             
             # Update the existing record
             cursor.execute("""
@@ -271,21 +274,21 @@ class CleanKaggleLogger:
             print("⚠️ Could not register IPython hooks")
 
 
-def setup_clean_logging(db_conn, session_name: str = None) -> CleanKaggleLogger:
+def setup_clean_logging(db_manager, session_name: str = None) -> CleanKaggleLogger:
     """
     Set up clean auto-logging with complete output capture
     
     Args:
-        db_conn: PostgreSQL connection object
+        db_manager: Database manager with connection pooling
         session_name: Name for this logging session
     
     Returns:
         CleanKaggleLogger instance
     
     Example:
-        logger = setup_clean_logging(conn, "SEC_EntityExtraction")
+        logger = setup_clean_logging(db_manager, "SEC_EntityExtraction")
     """
-    logger = CleanKaggleLogger(db_conn, session_name)
+    logger = CleanKaggleLogger(db_manager, session_name)
     logger.register_hooks()
     
     print(f"🔍 Clean auto-logging initialized!")
