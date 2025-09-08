@@ -55,20 +55,20 @@ class CleanKaggleLogger:
         try:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO core.kaggle_logs 
-                (timestamp, session_id, session_name, cell_number, message, data)
-                VALUES (NOW(), %s, %s, NULL, %s, %s)
-            """, (
-                self.session_id,
-                self.session_name,
-                "SESSION_START",
-                json.dumps({
-                    'session_name': self.session_name,
-                    'start_time': datetime.now().isoformat(),
-                    'python_version': sys.version.split()[0]
-                })
-            ))
+                cursor.execute("""
+                    INSERT INTO core.kaggle_logs 
+                    (timestamp, session_id, session_name, cell_number, message, data)
+                    VALUES (NOW(), %s, %s, NULL, %s, %s)
+                """, (
+                    self.session_id,
+                    self.session_name,
+                    "SESSION_START",
+                    json.dumps({
+                        'session_name': self.session_name,
+                        'start_time': datetime.now().isoformat(),
+                        'python_version': sys.version.split()[0]
+                    })
+                ))
                 conn.commit()
                 cursor.close()
         except Exception as e:
@@ -172,25 +172,25 @@ class CleanKaggleLogger:
         try:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO core.kaggle_logs 
-                (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
-                VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                self.session_id,
-                self.session_name,
-                cell_number,
-                f"CELL_{cell_number}_EXECUTING" if cell_number else "CELL_UNKNOWN_EXECUTING",
-                json.dumps({
-                    'execution_id': self.current_execution,
-                    'cell_code': self.current_cell_code[:1000] + ('...' if len(self.current_cell_code) > 1000 else ''),
-                    'started_at': self.start_time.isoformat(),
-                    'status': 'running'
-                }),
-                None,  # execution_time (will be updated when complete)
-                None,  # success (will be updated when complete)
-                None   # error (will be updated if error occurs)
-            ))
+                cursor.execute("""
+                    INSERT INTO core.kaggle_logs 
+                    (timestamp, session_id, session_name, cell_number, message, data, execution_time, success, error)
+                    VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    self.session_id,
+                    self.session_name,
+                    cell_number,
+                    f"CELL_{cell_number}_EXECUTING" if cell_number else "CELL_UNKNOWN_EXECUTING",
+                    json.dumps({
+                        'execution_id': self.current_execution,
+                        'cell_code': self.current_cell_code[:1000] + ('...' if len(self.current_cell_code) > 1000 else ''),
+                        'started_at': self.start_time.isoformat(),
+                        'status': 'running'
+                    }),
+                    None,  # execution_time (will be updated when complete)
+                    None,  # success (will be updated when complete)
+                    None   # error (will be updated if error occurs)
+                ))
                 conn.commit()
                 cursor.close()
         except Exception as e:
@@ -205,41 +205,41 @@ class CleanKaggleLogger:
             
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
-            
-            # Update the existing record
-            cursor.execute("""
-                UPDATE core.kaggle_logs 
-                SET 
-                    message = %s,
-                    data = %s,
-                    execution_time = %s,
-                    success = %s,
-                    error = %s,
-                    timestamp = NOW()
-                WHERE session_id = %s 
-                AND data->>'execution_id' = %s
-            """, (
-                f"CELL_{cell_number}_COMPLETE" if cell_number else "CELL_UNKNOWN_COMPLETE",
-                json.dumps({
-                    'execution_id': self.current_execution,
-                    'cell_number': cell_number,
-                    'cell_code': self.current_cell_code,
-                    'started_at': self.start_time.isoformat(),
-                    'completed_at': end_time.isoformat(),
-                    'duration_seconds': round(duration, 3),
-                    'status': 'completed' if success else 'failed',
-                    'complete_output': complete_output,
-                    'output_length': len(complete_output)
-                }),
-                round(duration, 3),
-                success,
-                error_message,
-                self.session_id,
-                self.current_execution
-            ))
-            
-            self.db_conn.commit()
-            cursor.close()
+                
+                # Update the existing record
+                cursor.execute("""
+                    UPDATE core.kaggle_logs 
+                    SET 
+                        message = %s,
+                        data = %s,
+                        execution_time = %s,
+                        success = %s,
+                        error = %s,
+                        timestamp = NOW()
+                    WHERE session_id = %s 
+                    AND data->>'execution_id' = %s
+                """, (
+                    f"CELL_{cell_number}_COMPLETE" if cell_number else "CELL_UNKNOWN_COMPLETE",
+                    json.dumps({
+                        'execution_id': self.current_execution,
+                        'cell_number': cell_number,
+                        'cell_code': self.current_cell_code,
+                        'started_at': self.start_time.isoformat(),
+                        'completed_at': end_time.isoformat(),
+                        'duration_seconds': round(duration, 3),
+                        'status': 'completed' if success else 'failed',
+                        'complete_output': complete_output,
+                        'output_length': len(complete_output)
+                    }),
+                    round(duration, 3),
+                    success,
+                    error_message,
+                    self.session_id,
+                    self.current_execution
+                ))
+                
+                conn.commit()
+                cursor.close()
             
         except Exception as e:
             print(f"⚠️ Logger warning: Could not log execution completion: {e}")
