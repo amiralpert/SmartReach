@@ -234,7 +234,7 @@ class KaggleTerminalLogger:
             # Log complete cell execution with ALL output
             self._log_cell_event("CELL_COMPLETE", {
                 'cell_number': self.current_cell_number,
-                'started_at': self.cell_start_time.isoformat(),
+                'started_at': self.cell_start_time.isoformat() if self.cell_start_time else None,
                 'completed_at': end_time.isoformat(),
                 'duration_seconds': round(duration, 3),
                 'success': success,
