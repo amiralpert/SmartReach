@@ -1,33 +1,32 @@
 """
-Complete Kaggle Notebook Terminal Capture Logger
-Captures ALL output from Kaggle notebook cells - including subprocess, C extensions, and direct terminal writes
+IPython Display System Logger for Kaggle Notebooks
+Uses IPython's native display hooks and output capture to get ALL terminal output
 """
 
 import json
 import time
 import re
 import sys
-import os
-import subprocess
-import tempfile
-import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
+from io import StringIO
 
 try:
     from IPython import get_ipython
     from IPython.core.interactiveshell import InteractiveShell
+    from IPython.utils.io import Tee
+    from IPython.utils.capture import CapturedIO
     IPYTHON_AVAILABLE = True
 except ImportError:
     IPYTHON_AVAILABLE = False
 
 
-class KaggleTerminalLogger:
-    """Simplified logger that captures complete Kaggle notebook terminal output"""
+class KaggleIPythonLogger:
+    """Kaggle-compatible logger using IPython's display system for complete output capture"""
     
     def __init__(self, db_manager, session_name: str = None):
         """
-        Initialize complete terminal capture logger
+        Initialize IPython display system logger
         
         Args:
             db_manager: Database manager with connection pooling
@@ -37,19 +36,24 @@ class KaggleTerminalLogger:
         self.session_id = f"kaggle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.session_name = session_name or "unnamed_session"
         
-        # Terminal capture setup
-        self.capture_active = False
-        self.temp_output_file = None
-        self.original_stdout_fd = None
-        self.original_stderr_fd = None
-        self.pipe_read_fd = None
-        self.pipe_write_fd = None
-        self.capture_thread = None
-        self.all_output = ""
+        # IPython output capture setup
+        self.ip = get_ipython() if IPYTHON_AVAILABLE else None
+        self.original_displayhook = None
+        self.original_display_pub = None
+        
+        # Output capture buffers
+        self.stdout_buffer = StringIO()
+        self.stderr_buffer = StringIO() 
+        self.all_output = StringIO()
         
         # Current cell tracking
         self.current_cell_number = None
         self.cell_start_time = None
+        self.capturing = False
+        
+        # Tee objects for simultaneous display and capture
+        self.stdout_tee = None
+        self.stderr_tee = None
         
         # Clear old logs and start new session
         self._clear_logs_and_start_session()
@@ -75,20 +79,22 @@ class KaggleTerminalLogger:
                     json.dumps({
                         'session_name': self.session_name,
                         'start_time': datetime.now().isoformat(),
-                        'python_version': sys.version.split()[0]
+                        'python_version': sys.version.split()[0],
+                        'ipython_version': self.ip.config.IPKernelApp.version if self.ip else 'unknown',
+                        'capture_method': 'ipython_display_system'
                     })
                 ))
                 conn.commit()
                 cursor.close()
                 
             print(f"🗑️ Cleared old Kaggle logs")
-            print(f"🚀 Started new logging session: {self.session_name}")
+            print(f"🚀 IPython logger session: {self.session_name}")
             
         except Exception as e:
             print(f"⚠️ Logger warning: Could not initialize session: {e}")
     
     def _extract_cell_number(self, cell_code: str) -> Optional[int]:
-        """Extract cell number from first line comment (e.g., '# Cell 4:'"""
+        """Extract cell number from first line comment (e.g., '# Cell 4:')"""
         if not cell_code:
             return None
         
@@ -99,106 +105,132 @@ class KaggleTerminalLogger:
         
         return None
     
-    def _start_terminal_capture(self):
-        """Start capturing all terminal output using file descriptors"""
-        try:
-            # Create a temporary file to capture output
-            self.temp_output_file = tempfile.NamedTemporaryFile(mode='w+', delete=False)
-            
-            # Create a pipe for capturing
-            self.pipe_read_fd, self.pipe_write_fd = os.pipe()
-            
-            # Save original file descriptors
-            self.original_stdout_fd = os.dup(sys.stdout.fileno())
-            self.original_stderr_fd = os.dup(sys.stderr.fileno())
-            
-            # Redirect stdout and stderr to our pipe
-            os.dup2(self.pipe_write_fd, sys.stdout.fileno())
-            os.dup2(self.pipe_write_fd, sys.stderr.fileno())
-            
-            # Start thread to read from pipe and tee output
-            self.capture_active = True
-            self.capture_thread = threading.Thread(target=self._capture_output_thread, daemon=True)
-            self.capture_thread.start()
-            
-        except Exception as e:
-            print(f"⚠️ Failed to start terminal capture: {e}")
-            self._restore_terminal()
-    
-    def _capture_output_thread(self):
-        """Thread that captures output from pipe and tees to original stdout"""
-        try:
-            with os.fdopen(self.pipe_read_fd, 'r') as pipe_reader:
-                while self.capture_active:
-                    try:
-                        # Read from pipe (non-blocking with timeout)
-                        line = pipe_reader.readline()
-                        if line:
-                            # Write to original stdout so user still sees it
-                            os.write(self.original_stdout_fd, line.encode())
-                            
-                            # Capture for logging
-                            self.all_output += line
-                            
-                            # Also write to temp file
-                            if self.temp_output_file and not self.temp_output_file.closed:
-                                self.temp_output_file.write(line)
-                                self.temp_output_file.flush()
-                    except Exception as e:
-                        if self.capture_active:  # Only log if we're still supposed to be capturing
-                            print(f"⚠️ Capture thread error: {e}")
-                        break
-        except Exception as e:
-            print(f"⚠️ Output capture thread failed: {e}")
-    
-    def _restore_terminal(self):
-        """Restore original terminal file descriptors"""
-        try:
-            self.capture_active = False
-            
-            # Restore original file descriptors
-            if self.original_stdout_fd is not None:
-                os.dup2(self.original_stdout_fd, sys.stdout.fileno())
-                os.close(self.original_stdout_fd)
-                self.original_stdout_fd = None
-            
-            if self.original_stderr_fd is not None:
-                os.dup2(self.original_stderr_fd, sys.stderr.fileno())
-                os.close(self.original_stderr_fd)
-                self.original_stderr_fd = None
-            
-            # Close pipe
-            if self.pipe_write_fd is not None:
-                os.close(self.pipe_write_fd)
-                self.pipe_write_fd = None
-            
-            # Wait for capture thread to finish
-            if self.capture_thread and self.capture_thread.is_alive():
-                self.capture_thread.join(timeout=1)
-            
-            # Close temp file
-            if self.temp_output_file and not self.temp_output_file.closed:
-                self.temp_output_file.close()
-                if os.path.exists(self.temp_output_file.name):
-                    os.unlink(self.temp_output_file.name)
-                self.temp_output_file = None
+    def _start_output_capture(self):
+        """Start capturing output using IPython's display system and Tee"""
+        if not self.ip:
+            return
         
+        try:
+            # Reset buffers
+            self.stdout_buffer = StringIO()
+            self.stderr_buffer = StringIO()
+            self.all_output = StringIO()
+            
+            # Create Tee objects to capture while still displaying
+            self.stdout_tee = Tee(sys.stdout, self.stdout_buffer)
+            self.stderr_tee = Tee(sys.stderr, self.stderr_buffer)
+            
+            # Also capture to combined buffer
+            class CombinedTee:
+                def __init__(self, original, individual_buf, combined_buf):
+                    self.original = original
+                    self.individual_buf = individual_buf
+                    self.combined_buf = combined_buf
+                
+                def write(self, data):
+                    # Write to original (user sees it)
+                    self.original.write(data)
+                    # Write to individual buffer
+                    self.individual_buf.write(data)
+                    # Write to combined buffer
+                    self.combined_buf.write(data)
+                    # Flush all
+                    self.original.flush()
+                
+                def flush(self):
+                    self.original.flush()
+                
+                def __getattr__(self, name):
+                    return getattr(self.original, name)
+            
+            # Replace stdout and stderr with capturing versions
+            sys.stdout = CombinedTee(sys.stdout, self.stdout_buffer, self.all_output)
+            sys.stderr = CombinedTee(sys.stderr, self.stderr_buffer, self.all_output)
+            
+            self.capturing = True
+            
         except Exception as e:
-            print(f"⚠️ Error restoring terminal: {e}")
+            print(f"⚠️ Failed to start output capture: {e}")
+    
+    def _stop_output_capture(self) -> str:
+        """Stop output capture and return captured text"""
+        if not self.capturing:
+            return ""
+        
+        try:
+            # Restore original stdout/stderr
+            if hasattr(sys.stdout, 'original'):
+                sys.stdout = sys.stdout.original
+            if hasattr(sys.stderr, 'original'):  
+                sys.stderr = sys.stderr.original
+            
+            # Get captured output
+            captured_output = self.all_output.getvalue()
+            self.capturing = False
+            
+            return captured_output
+            
+        except Exception as e:
+            print(f"⚠️ Error stopping capture: {e}")
+            return self.all_output.getvalue() if self.all_output else ""
+    
+    def _capture_ipython_display_output(self):
+        """Hook into IPython's display system for rich output"""
+        if not self.ip:
+            return
+        
+        try:
+            # Store original display publisher
+            self.original_display_pub = self.ip.display_pub
+            
+            # Create custom display publisher that captures output
+            class CapturingDisplayPublisher:
+                def __init__(self, logger, original_pub):
+                    self.logger = logger
+                    self.original_pub = original_pub
+                
+                def publish(self, data, metadata=None, source=None):
+                    # Capture display data
+                    if self.logger.capturing:
+                        display_text = str(data)
+                        self.logger.all_output.write(f"[DISPLAY]: {display_text}\n")
+                    
+                    # Still publish normally so user sees it
+                    return self.original_pub.publish(data, metadata, source)
+                
+                def __getattr__(self, name):
+                    return getattr(self.original_pub, name)
+            
+            # Replace display publisher
+            self.ip.display_pub = CapturingDisplayPublisher(self, self.original_display_pub)
+            
+        except Exception as e:
+            print(f"⚠️ Failed to hook display publisher: {e}")
+    
+    def _restore_ipython_hooks(self):
+        """Restore original IPython hooks"""
+        if not self.ip:
+            return
+        
+        try:
+            # Restore display publisher
+            if self.original_display_pub:
+                self.ip.display_pub = self.original_display_pub
+                self.original_display_pub = None
+        except Exception as e:
+            print(f"⚠️ Error restoring IPython hooks: {e}")
     
     def pre_run_cell(self, info):
-        """Hook called before cell execution - start terminal capture"""
+        """Hook called before cell execution - start capturing everything"""
         try:
             # Get cell info
             cell_code = info.raw_cell if hasattr(info, 'raw_cell') else str(info) if info else ""
             self.current_cell_number = self._extract_cell_number(cell_code)
             self.cell_start_time = datetime.now()
             
-            # Reset output capture
-            self.all_output = ""
-            
-            # Start capturing all terminal output
-            self._start_terminal_capture()
+            # Start capturing all output types
+            self._start_output_capture()
+            self._capture_ipython_display_output()
             
             # Log cell start
             self._log_cell_event("CELL_START", {
@@ -211,10 +243,11 @@ class KaggleTerminalLogger:
             print(f"⚠️ Pre-run error: {e}")
     
     def post_run_cell(self, result):
-        """Hook called after cell execution - capture complete output"""
+        """Hook called after cell execution - capture and log all output"""
         try:
-            # Stop terminal capture
-            self._restore_terminal()
+            # Stop capturing and get all output
+            complete_output = self._stop_output_capture()
+            self._restore_ipython_hooks()
             
             # Get execution details
             end_time = datetime.now()
@@ -231,6 +264,10 @@ class KaggleTerminalLogger:
                 success = False
                 error_message = str(result.error_before_exec)
             
+            # Also capture IPython result output if available
+            if hasattr(result, 'result') and result.result is not None:
+                complete_output += f"\n[RESULT]: {str(result.result)}"
+            
             # Log complete cell execution with ALL output
             self._log_cell_event("CELL_COMPLETE", {
                 'cell_number': self.current_cell_number,
@@ -239,14 +276,15 @@ class KaggleTerminalLogger:
                 'duration_seconds': round(duration, 3),
                 'success': success,
                 'error_message': error_message,
-                'complete_terminal_output': self.all_output,
-                'output_length': len(self.all_output)
+                'complete_terminal_output': complete_output,
+                'output_length': len(complete_output),
+                'stdout_length': self.stdout_buffer.tell() if self.stdout_buffer else 0,
+                'stderr_length': self.stderr_buffer.tell() if self.stderr_buffer else 0
             })
             
             # Clear current execution
             self.current_cell_number = None
             self.cell_start_time = None
-            self.all_output = ""
             
         except Exception as e:
             print(f"⚠️ Post-run error: {e}")
@@ -278,52 +316,55 @@ class KaggleTerminalLogger:
             print(f"⚠️ Failed to log {event_type}: {e}")
     
     def register_hooks(self):
-        """Register IPython hooks for automatic terminal capture"""
+        """Register IPython hooks for automatic output capture"""
         if not IPYTHON_AVAILABLE:
             print("⚠️ IPython not available - logging disabled")
             return
         
-        ip = get_ipython()
-        if ip:
+        if not self.ip:
+            print("⚠️ Could not get IPython instance")
+            return
+        
+        try:
             # Unregister any existing hooks first
             try:
-                ip.events.unregister('pre_run_cell', self.pre_run_cell)
-                ip.events.unregister('post_run_cell', self.post_run_cell)
+                self.ip.events.unregister('pre_run_cell', self.pre_run_cell)
+                self.ip.events.unregister('post_run_cell', self.post_run_cell)
             except ValueError:
                 pass  # No existing hooks to unregister
             
             # Register new hooks
-            ip.events.register('pre_run_cell', self.pre_run_cell)
-            ip.events.register('post_run_cell', self.post_run_cell)
+            self.ip.events.register('pre_run_cell', self.pre_run_cell)
+            self.ip.events.register('post_run_cell', self.post_run_cell)
             
-            print(f"✅ Complete terminal capture enabled for: {self.session_name}")
+            print(f"✅ IPython display capture enabled: {self.session_name}")
             print(f"📊 Session ID: {self.session_id}")
-            print(f"🔍 Capturing ALL Kaggle notebook output including subprocesses")
-        else:
-            print("⚠️ Could not register IPython hooks")
+            print(f"🎯 Using IPython's native display system for capture")
+        except Exception as e:
+            print(f"⚠️ Could not register IPython hooks: {e}")
 
 
-def setup_complete_logging(db_manager, session_name: str = None) -> KaggleTerminalLogger:
+def setup_complete_logging(db_manager, session_name: str = None) -> KaggleIPythonLogger:
     """
-    Set up complete Kaggle terminal capture logging
+    Set up complete IPython display system logging for Kaggle
     
     Args:
         db_manager: Database manager with connection pooling
         session_name: Name for this logging session
     
     Returns:
-        KaggleTerminalLogger instance
+        KaggleIPythonLogger instance
     
     Example:
         logger = setup_complete_logging(db_manager, "SEC_EntityExtraction")
     """
-    logger = KaggleTerminalLogger(db_manager, session_name)
+    logger = KaggleIPythonLogger(db_manager, session_name)
     logger.register_hooks()
     
-    print(f"🎯 Complete Kaggle terminal logging initialized!")
+    print(f"🎯 IPython display system logging initialized!")
     print(f"📝 Session: {logger.session_name}")
-    print(f"💾 ALL output captured in: core.kaggle_logs")
-    print(f"🔍 Includes subprocess, C extensions, and direct terminal writes")
-    print(f"✨ You and Claude now see the same terminal output!")
+    print(f"💾 Output captured in: core.kaggle_logs")
+    print(f"🔍 Captures: print statements, subprocess output, display data")
+    print(f"✨ Compatible with Kaggle notebook environment!")
     
     return logger
