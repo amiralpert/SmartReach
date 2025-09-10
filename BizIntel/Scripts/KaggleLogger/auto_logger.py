@@ -55,6 +55,10 @@ class KaggleIPythonLogger:
         self.stdout_tee = None
         self.stderr_tee = None
         
+        # Store original stdout/stderr for proper restoration
+        self.original_stdout = None
+        self.original_stderr = None
+        
         # Clear old logs and start new session
         self._clear_logs_and_start_session()
     
@@ -111,14 +115,18 @@ class KaggleIPythonLogger:
             return
         
         try:
+            # Store original stdout/stderr for proper restoration
+            self.original_stdout = sys.stdout
+            self.original_stderr = sys.stderr
+            
             # Reset buffers
             self.stdout_buffer = StringIO()
             self.stderr_buffer = StringIO()
             self.all_output = StringIO()
             
             # Create Tee objects to capture while still displaying
-            self.stdout_tee = Tee(sys.stdout, self.stdout_buffer)
-            self.stderr_tee = Tee(sys.stderr, self.stderr_buffer)
+            self.stdout_tee = Tee(self.original_stdout, self.stdout_buffer)
+            self.stderr_tee = Tee(self.original_stderr, self.stderr_buffer)
             
             # Also capture to combined buffer
             class CombinedTee:
@@ -144,8 +152,8 @@ class KaggleIPythonLogger:
                     return getattr(self.original, name)
             
             # Replace stdout and stderr with capturing versions
-            sys.stdout = CombinedTee(sys.stdout, self.stdout_buffer, self.all_output)
-            sys.stderr = CombinedTee(sys.stderr, self.stderr_buffer, self.all_output)
+            sys.stdout = CombinedTee(self.original_stdout, self.stdout_buffer, self.all_output)
+            sys.stderr = CombinedTee(self.original_stderr, self.stderr_buffer, self.all_output)
             
             self.capturing = True
             
@@ -158,11 +166,11 @@ class KaggleIPythonLogger:
             return ""
         
         try:
-            # Restore original stdout/stderr
-            if hasattr(sys.stdout, 'original'):
-                sys.stdout = sys.stdout.original
-            if hasattr(sys.stderr, 'original'):  
-                sys.stderr = sys.stderr.original
+            # Restore original stdout/stderr using stored references
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+            if self.original_stderr:  
+                sys.stderr = self.original_stderr
             
             # Get captured output
             captured_output = self.all_output.getvalue()
