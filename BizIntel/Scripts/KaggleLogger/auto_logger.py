@@ -352,7 +352,7 @@ class KaggleIPythonLogger:
             print(f"⚠️ Could not register IPython hooks: {e}")
 
 
-def setup_complete_logging(db_manager, session_name: str = None) -> KaggleIPythonLogger:
+def setup_clean_logging(db_manager, session_name: str = None) -> KaggleIPythonLogger:
     """
     Set up complete IPython display system logging for Kaggle
     
@@ -364,7 +364,7 @@ def setup_complete_logging(db_manager, session_name: str = None) -> KaggleIPytho
         KaggleIPythonLogger instance
     
     Example:
-        logger = setup_complete_logging(db_manager, "SEC_EntityExtraction")
+        logger = setup_clean_logging(db_manager, "SEC_EntityExtraction")
     """
     logger = KaggleIPythonLogger(db_manager, session_name)
     logger.register_hooks()
