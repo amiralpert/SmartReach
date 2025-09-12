@@ -59,6 +59,10 @@ class KaggleIPythonLogger:
         self.original_stdout = None
         self.original_stderr = None
         
+        # Store the TRUE kernel streams (never change these)
+        self.kernel_stdout = sys.__stdout__  # Python's built-in stdout
+        self.kernel_stderr = sys.__stderr__  # Python's built-in stderr
+        
         # Clear old logs and start new session
         self._clear_logs_and_start_session()
     
@@ -115,7 +119,12 @@ class KaggleIPythonLogger:
             return
         
         try:
-            # Store original stdout/stderr for proper restoration
+            # SAFETY: Ensure we start from clean state (prevent nested capture)
+            if hasattr(sys.stdout, 'original'):  # Already captured - force reset
+                sys.stdout = self.kernel_stdout
+                sys.stderr = self.kernel_stderr
+            
+            # Store original stdout/stderr for proper restoration  
             self.original_stdout = sys.stdout
             self.original_stderr = sys.stderr
             
@@ -166,11 +175,13 @@ class KaggleIPythonLogger:
             return ""
         
         try:
-            # Restore original stdout/stderr using stored references
-            if self.original_stdout:
-                sys.stdout = self.original_stdout
-            if self.original_stderr:  
-                sys.stderr = self.original_stderr
+            # FORCE restore to TRUE kernel streams (prevents nested capture)
+            sys.stdout = self.kernel_stdout
+            sys.stderr = self.kernel_stderr
+            
+            # Clear our stored references (start fresh next time)
+            self.original_stdout = None
+            self.original_stderr = None
             
             # Get captured output
             captured_output = self.all_output.getvalue()
