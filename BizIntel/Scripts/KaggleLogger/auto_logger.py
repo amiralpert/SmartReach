@@ -114,13 +114,13 @@ class KaggleIPythonLogger:
         return None
     
     def _start_output_capture(self):
-        """Start capturing output using IPython's display system and Tee"""
+        """Start capturing output using simple synchronous capture (no threading)"""
         if not self.ip:
             return
         
         try:
             # SAFETY: Ensure we start from clean state (prevent nested capture)
-            if hasattr(sys.stdout, 'original'):  # Already captured - force reset
+            if hasattr(sys.stdout, 'write') and hasattr(sys.stdout, '_captured'):
                 sys.stdout = self.kernel_stdout
                 sys.stderr = self.kernel_stderr
             
@@ -133,36 +133,41 @@ class KaggleIPythonLogger:
             self.stderr_buffer = StringIO()
             self.all_output = StringIO()
             
-            # Create Tee objects to capture while still displaying
-            self.stdout_tee = Tee(self.original_stdout, self.stdout_buffer)
-            self.stderr_tee = Tee(self.original_stderr, self.stderr_buffer)
-            
-            # Also capture to combined buffer
-            class CombinedTee:
-                def __init__(self, original, individual_buf, combined_buf):
+            # Simple capture class (no threading, no pipes)
+            class SimpleCaptureStream:
+                def __init__(self, original, buffer, combined_buffer):
                     self.original = original
-                    self.individual_buf = individual_buf
-                    self.combined_buf = combined_buf
+                    self.buffer = buffer
+                    self.combined_buffer = combined_buffer
+                    self._captured = True  # Mark as captured
                 
                 def write(self, data):
-                    # Write to original (user sees it)
-                    self.original.write(data)
-                    # Write to individual buffer
-                    self.individual_buf.write(data)
-                    # Write to combined buffer
-                    self.combined_buf.write(data)
-                    # Flush all
-                    self.original.flush()
+                    # Write to original (user sees it immediately)
+                    try:
+                        self.original.write(data)
+                        self.original.flush()
+                    except:
+                        pass  # Continue even if original fails
+                    
+                    # Write to buffers
+                    try:
+                        self.buffer.write(data)
+                        self.combined_buffer.write(data)
+                    except:
+                        pass  # Continue even if capture fails
                 
                 def flush(self):
-                    self.original.flush()
+                    try:
+                        self.original.flush()
+                    except:
+                        pass
                 
                 def __getattr__(self, name):
                     return getattr(self.original, name)
             
-            # Replace stdout and stderr with capturing versions
-            sys.stdout = CombinedTee(self.original_stdout, self.stdout_buffer, self.all_output)
-            sys.stderr = CombinedTee(self.original_stderr, self.stderr_buffer, self.all_output)
+            # Replace stdout and stderr with simple capturing versions
+            sys.stdout = SimpleCaptureStream(self.original_stdout, self.stdout_buffer, self.all_output)
+            sys.stderr = SimpleCaptureStream(self.original_stderr, self.stderr_buffer, self.all_output)
             
             self.capturing = True
             
