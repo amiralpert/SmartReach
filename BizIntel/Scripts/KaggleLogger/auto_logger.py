@@ -352,6 +352,48 @@ class KaggleIPythonLogger:
             print(f"⚠️ Could not register IPython hooks: {e}")
 
 
+def ensure_output_restored():
+    """Ensure stdout/stderr are in a working state after cell cancellation
+    
+    This function fixes the 'I/O operation on closed file' error that occurs
+    when restarting a cell after cancellation.
+    """
+    import sys
+    
+    # Check if stdout is broken (closed file handle)
+    try:
+        # Try to check if stdout is closed
+        if hasattr(sys.stdout, 'closed') and sys.stdout.closed:
+            needs_fix = True
+        elif hasattr(sys.stdout, '_stream') and hasattr(sys.stdout._stream, 'closed') and sys.stdout._stream.closed:
+            needs_fix = True
+        else:
+            # Try writing to test if it's broken
+            try:
+                sys.stdout.write('')
+                sys.stdout.flush()
+                needs_fix = False
+            except (ValueError, AttributeError, OSError):
+                needs_fix = True
+    except:
+        needs_fix = True
+    
+    if needs_fix:
+        try:
+            from IPython import get_ipython
+            from ipykernel.iostream import OutStream
+            
+            ip = get_ipython()
+            if ip and hasattr(ip, 'kernel'):
+                # Restore stdout and stderr using kernel's output streams
+                sys.stdout = OutStream(ip.kernel.session, ip.kernel.iopub_socket, 'stdout')
+                sys.stderr = OutStream(ip.kernel.session, ip.kernel.iopub_socket, 'stderr')
+                print("✅ Restored stdout/stderr after cancellation")
+        except Exception as e:
+            # If we can't fix it, at least warn the user
+            import warnings
+            warnings.warn(f"Could not restore output streams: {e}. You may need to restart the kernel.")
+
 def setup_clean_logging(db_manager, session_name: str = None) -> KaggleIPythonLogger:
     """
     Set up complete IPython display system logging for Kaggle
