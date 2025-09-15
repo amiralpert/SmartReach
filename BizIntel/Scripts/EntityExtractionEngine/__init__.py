@@ -14,6 +14,11 @@ from .model_routing import route_sections_to_models
 from .filing_processor import process_sec_filing_with_sections
 from .database_queries import get_unprocessed_filings
 from .entity_extraction_pipeline import EntityExtractionPipeline
+from .relationship_extractor import RelationshipExtractor
+from .semantic_storage import SemanticRelationshipStorage
+from .pipeline_storage import PipelineEntityStorage
+from .batch_processor import process_filings_batch
+from .analytics_reporter import generate_pipeline_analytics_report
 
 __all__ = [
     'SEC_FILINGS_PROMPT',
@@ -33,5 +38,10 @@ __all__ = [
     'route_sections_to_models',
     'process_sec_filing_with_sections',
     'get_unprocessed_filings',
-    'EntityExtractionPipeline'
+    'EntityExtractionPipeline',
+    'RelationshipExtractor',
+    'SemanticRelationshipStorage',
+    'PipelineEntityStorage',
+    'process_filings_batch',
+    'generate_pipeline_analytics_report'
 ]
