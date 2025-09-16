@@ -87,22 +87,33 @@ class EntityExtractionPipeline:
     
     def process_filing_entities(self, filing_data: Dict, process_sec_filing_func) -> List[Dict]:
         """Main function: Extract entities using Cell 2's section extraction and routing"""
-        
+
         # Step 1: Use Cell 2's section extraction function directly
         section_result = process_sec_filing_func(filing_data)
-        
+
         if section_result['processing_status'] != 'success':
             print(f"   ❌ Section extraction failed: {section_result.get('error', 'Unknown')}")
             return []
-        
+
         # Step 2: Extract entities using Cell 2's sections and routing
         entities = self._extract_entities_from_sections(section_result)
-        
+
         self.stats['filings_processed'] += 1
         self.stats['entities_extracted'] += len(entities)
-        
+
         print(f"   ✅ Extracted {len(entities)} entities from {section_result['total_sections']} sections")
-        
+
+        return entities
+
+    def process_and_store_filing_entities(self, filing_data: Dict, process_sec_filing_func, storage) -> List[Dict]:
+        """Extract entities and store them in database to mark filing as processed"""
+        entities = self.process_filing_entities(filing_data, process_sec_filing_func)
+
+        if entities:
+            # Store entities in database to mark filing as processed
+            storage.store_entities(entities, filing_data)
+            print(f"   💾 Stored {len(entities)} entities for {filing_data['company_domain']}")
+
         return entities
     
     def _extract_entities_from_sections(self, section_result: Dict) -> List[Dict]:
