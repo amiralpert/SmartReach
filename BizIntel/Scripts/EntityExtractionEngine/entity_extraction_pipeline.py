@@ -183,17 +183,19 @@ class EntityExtractionPipeline:
                                    section_name: str, section_result: Dict) -> List[Dict]:
         """Extract entities from single section with essential filtering"""
         try:
-            # Check if text needs chunking (transformer token limit ~512 tokens ≈ 2500 chars)
-            MAX_CHUNK_SIZE = 2000  # Conservative limit for transformer models
+            # Get chunking configuration from CONFIG
+            chunking_config = self.config.get('entity_extraction', {})
+            MAX_CHUNK_SIZE = chunking_config.get('max_chunk_size', 2000)
+            OVERLAP = chunking_config.get('chunk_overlap', 200)
+            MAX_CHUNKS = chunking_config.get('max_chunks_per_section', 50)
+            ENABLE_CHUNKING = chunking_config.get('enable_chunking', True)
 
-            # For large documents (like full_document), process in chunks
-            if len(section_text) > MAX_CHUNK_SIZE:
+            # For large documents (like full_document), process in chunks if enabled
+            if ENABLE_CHUNKING and len(section_text) > MAX_CHUNK_SIZE:
                 print(f"      📄 Large section '{section_name}' ({len(section_text):,} chars) - chunking for {model_name}")
                 raw_entities = []
 
                 # Split text into overlapping chunks to avoid missing entities at boundaries
-                OVERLAP = 200  # Overlap between chunks to catch entities at boundaries
-                MAX_CHUNKS = 50  # Limit chunks to prevent excessive processing time
                 chunks = []
                 for i in range(0, len(section_text), MAX_CHUNK_SIZE - OVERLAP):
                     chunk = section_text[i:i + MAX_CHUNK_SIZE]
