@@ -6,8 +6,7 @@ Handles SEC filing extraction using EdgarTools with timeout protection.
 from typing import Dict
 from datetime import datetime
 from edgar import find
-from edgar.documents import parse_html
-from edgar.documents.extractors.section_extractor import SectionExtractor
+# EdgarTools native section extraction
 
 from EntityExtractionEngine.timeout_utils import with_timeout, TimeoutError
 from EntityExtractionEngine.logging_utils import log_error, log_warning, log_info
@@ -23,25 +22,7 @@ def find_filing_with_timeout(accession_number: str):
     return filing
 
 
-@with_timeout(60)  # 60 second timeout for HTML download
-def get_html_with_timeout(filing):
-    """Get HTML content with timeout protection"""
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting html() fetch...")
-    html_content = filing.html()
-    if html_content:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] html() completed, size: {len(html_content):,} bytes")
-    else:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] html() returned empty content")
-    return html_content
-
-
-@with_timeout(30)  # 30 second timeout for parsing
-def parse_html_with_timeout(html_content):
-    """Parse HTML with timeout protection"""
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting HTML parsing...")
-    document = parse_html(html_content)
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] HTML parsing completed")
-    return document
+# Note: HTML parsing functions removed - using Filing.sections API directly
 
 
 def get_filing_sections(accession_number: str, filing_type: str = None, section_cache=None, config=None) -> Dict[str, str]:
@@ -79,33 +60,52 @@ def get_filing_sections(accession_number: str, filing_type: str = None, section_
         
         log_info("EdgarTools", f"Found {filing_type} for {getattr(filing, 'company', 'Unknown Company')}")
         
-        # Get structured HTML content with timeout
+        # Extract sections using native EdgarTools Filing.sections API
         try:
-            html_content = get_html_with_timeout(filing)
-        except TimeoutError:
-            log_error("EdgarTools", f"Timeout fetching HTML for {accession_number} (60s exceeded)")
-            return {}
-        
-        if not html_content:
-            raise ValueError("No HTML content available")
-        
-        # Limit HTML size to prevent memory issues
-        if len(html_content) > MAX_HTML_SIZE:
-            log_warning("EdgarTools", f"HTML too large ({len(html_content):,} bytes), truncating to {MAX_HTML_SIZE:,}")
-            html_content = html_content[:MAX_HTML_SIZE]
-        
-        # Parse HTML to Document object with timeout
-        try:
-            document = parse_html_with_timeout(html_content)
-        except TimeoutError:
-            log_error("EdgarTools", f"Timeout parsing HTML for {accession_number} (30s exceeded)")
-            return {}
-        
-        # Extract sections using SectionExtractor
-        extractor = SectionExtractor(filing_type=filing_type)
-        sections = extractor.extract(document)
-        
-        log_info("EdgarTools", f"SectionExtractor found {len(sections)} sections")
+            sections = filing.sections
+            log_info("EdgarTools", f"EdgarTools native sections found {len(sections)} sections")
+
+            # DEBUG: Add detailed logging for 8-K section extraction issues
+            if filing_type.upper() == '8-K':
+                log_info("EdgarTools", f"8-K filing {accession_number} - analyzing sections...")
+                log_info("EdgarTools", f"Filing sections type: {type(sections)}")
+
+                if hasattr(sections, 'keys'):
+                    section_names = list(sections.keys())
+                    log_info("EdgarTools", f"Section names found: {section_names[:10]}...")  # First 10 section names
+                elif hasattr(sections, '__len__'):
+                    log_info("EdgarTools", f"Sections list length: {len(sections)}")
+                    if len(sections) > 0:
+                        log_info("EdgarTools", f"First section type: {type(sections[0])}")
+
+                # Look for 8-K Item sections specifically
+                if isinstance(sections, dict):
+                    item_sections = {k: v for k, v in sections.items() if 'item' in k.lower()}
+                    log_info("EdgarTools", f"Found {len(item_sections)} item-related sections: {list(item_sections.keys())}")
+
+        except Exception as sections_error:
+            log_error("EdgarTools", f"Failed to access filing.sections for {accession_number}: {sections_error}")
+            sections = {}
+
+            # Fallback: try to get full text from filing directly
+            log_info("EdgarTools", "Attempting direct filing.text extraction as fallback...")
+
+            try:
+                # Get full text from filing
+                filing_text = filing.text() if hasattr(filing, 'text') and callable(filing.text) else str(filing)
+
+                # Look for common 8-K section markers
+                item_markers = ['Item 1.', 'Item 2.', 'Item 3.', 'Item 4.', 'Item 5.',
+                               'Item 6.', 'Item 7.', 'Item 8.', 'Item 9.']
+                found_items = [item for item in item_markers if item in filing_text[:5000]]
+
+                log_info("EdgarTools", f"Filing text preview (first 500 chars): {filing_text[:500]}...")
+                log_info("EdgarTools", f"Found potential 8-K items: {found_items}")
+                log_info("EdgarTools", f"Filing text length: {len(filing_text)} chars")
+
+            except Exception as text_error:
+                log_error("EdgarTools", f"Failed to get filing text: {text_error}")
+                filing_text = ""
         
         # Convert sections to text dictionary
         section_texts = {}
@@ -125,17 +125,21 @@ def get_filing_sections(accession_number: str, filing_type: str = None, section_
                 log_warning("EdgarTools", f"Could not extract section {section_name}", {"error": str(section_e)})
                 continue
         
-        # If SectionExtractor returns no sections, fall back to full document text
+        # If no sections found, fall back to full filing text
         if not section_texts:
-            log_warning("EdgarTools", "No structured sections found, using full document fallback")
-            full_text = document.text() if hasattr(document, 'text') and callable(document.text) else str(document)
-            if full_text and len(full_text.strip()) > 100:  # Only use if substantial content
-                # Limit full document size
-                if len(full_text) > MAX_HTML_SIZE:
-                    log_warning("EdgarTools", f"Full document too large ({len(full_text):,} chars), truncating")
-                    full_text = full_text[:MAX_HTML_SIZE]
-                section_texts['full_document'] = full_text.strip()
-                log_info("EdgarTools", f"Using full document: {len(full_text):,} chars")
+            log_warning("EdgarTools", "No structured sections found, using full filing fallback")
+            try:
+                full_text = filing.text() if hasattr(filing, 'text') and callable(filing.text) else str(filing)
+                if full_text and len(full_text.strip()) > 100:  # Only use if substantial content
+                    # Limit full document size
+                    if len(full_text) > MAX_HTML_SIZE:
+                        log_warning("EdgarTools", f"Full filing too large ({len(full_text):,} chars), truncating")
+                        full_text = full_text[:MAX_HTML_SIZE]
+                    section_texts['full_document'] = full_text.strip()
+                    log_info("EdgarTools", f"Using full filing: {len(full_text):,} chars")
+            except Exception as fallback_error:
+                log_error("EdgarTools", f"Failed to get fallback text: {fallback_error}")
+                return {}
         
         # Cache the result
         if section_texts and section_cache and config and config.get('cache', {}).get('enabled'):
