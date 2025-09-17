@@ -24,6 +24,8 @@ build/
 .env.local
 .env.*.local
 config/.env
+local_secrets.py
+**/local_secrets.py
 
 # IDE
 .vscode/
