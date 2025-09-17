@@ -179,27 +179,63 @@ class EntityExtractionPipeline:
         
         return merged_entities
     
-    def _extract_from_single_section(self, section_text: str, model_name: str, 
+    def _extract_from_single_section(self, section_text: str, model_name: str,
                                    section_name: str, section_result: Dict) -> List[Dict]:
         """Extract entities from single section with essential filtering"""
         try:
-            # Extract raw entities
-            raw_entities = self.models[model_name](section_text)
-            
+            # Check if text needs chunking (transformer token limit ~512 tokens ≈ 2500 chars)
+            MAX_CHUNK_SIZE = 2000  # Conservative limit for transformer models
+
+            # For large documents (like full_document), process in chunks
+            if len(section_text) > MAX_CHUNK_SIZE:
+                print(f"      📄 Large section '{section_name}' ({len(section_text):,} chars) - chunking for {model_name}")
+                raw_entities = []
+
+                # Split text into overlapping chunks to avoid missing entities at boundaries
+                OVERLAP = 200  # Overlap between chunks to catch entities at boundaries
+                MAX_CHUNKS = 50  # Limit chunks to prevent excessive processing time
+                chunks = []
+                for i in range(0, len(section_text), MAX_CHUNK_SIZE - OVERLAP):
+                    chunk = section_text[i:i + MAX_CHUNK_SIZE]
+                    chunks.append((i, chunk))
+                    if len(chunks) >= MAX_CHUNKS:
+                        print(f"         ⚠️ Text too large, limiting to first {MAX_CHUNKS} chunks (~{MAX_CHUNKS * MAX_CHUNK_SIZE:,} chars)")
+                        break
+
+                print(f"         Processing {len(chunks)} chunks...")
+
+                # Process each chunk
+                for chunk_idx, (char_offset, chunk_text) in enumerate(chunks):
+                    try:
+                        chunk_entities = self.models[model_name](chunk_text)
+                        # Adjust character positions to account for chunk offset
+                        for entity in chunk_entities:
+                            entity['start'] = entity.get('start', 0) + char_offset
+                            entity['end'] = entity.get('end', 0) + char_offset
+                        raw_entities.extend(chunk_entities)
+                    except Exception as chunk_e:
+                        print(f"         ⚠️ Chunk {chunk_idx + 1}/{len(chunks)} failed: {chunk_e}")
+                        continue
+
+                print(f"         ✓ Extracted {len(raw_entities)} raw entities from {len(chunks)} chunks")
+            else:
+                # Small enough to process in one go
+                raw_entities = self.models[model_name](section_text)
+
             filtered_entities = []
             for entity in raw_entities:
                 # Apply confidence threshold
                 if entity['score'] < self.config.get('models', {}).get('confidence_threshold', 0.5):
                     continue
-                
+
                 entity_text = entity['word'].strip()
                 entity_category = entity['entity_group']
-                
+
                 # Apply essential model-specific filtering
                 if not self._passes_essential_filters(model_name, entity_text, entity_category):
                     self.stats['entities_filtered'] += 1
                     continue
-                
+
                 filtered_entities.append({
                     'extraction_id': str(uuid.uuid4()),
                     'company_domain': section_result['company_domain'],
