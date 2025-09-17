@@ -99,11 +99,13 @@ class PipelineEntityStorage:
         char_end = (entity.get('char_end') or 
                    entity.get('character_end') or 0)
         
-        # Convert arrays/dicts to JSON strings
-        models_detected = json.dumps(entity.get('models_detected', []))
+        # Handle PostgreSQL data types correctly
+        # models_detected is PostgreSQL ARRAY - let psycopg2 handle conversion
+        models_detected = entity.get('models_detected', [])
+        # Others are JSONB - convert to JSON strings
         all_confidences = json.dumps(entity.get('all_confidences', {}))
         entity_variations = json.dumps(entity.get('entity_variations', {}))
-        detecting_models = json.dumps(entity.get('detecting_models', 
+        detecting_models = json.dumps(entity.get('detecting_models',
                                                entity.get('models_detected', [])))
         
         # Calculate quality and consensus scores
