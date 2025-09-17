@@ -28,7 +28,18 @@ class SemanticRelationshipStorage:
             return True
         
         try:
-            with get_db_connection() as conn:
+            import psycopg2
+            from kaggle_secrets import UserSecretsClient
+
+            user_secrets = UserSecretsClient()
+            with psycopg2.connect(
+                host=user_secrets.get_secret("NEON_HOST"),
+                database=user_secrets.get_secret("NEON_DATABASE"),
+                user=user_secrets.get_secret("NEON_USER"),
+                password=user_secrets.get_secret("NEON_PASSWORD"),
+                port=5432,
+                sslmode='require'
+            ) as conn:
                 cursor = conn.cursor()
                 
                 print(f"   📦 Storing {len(relationships)} relationships with semantic buckets...")
