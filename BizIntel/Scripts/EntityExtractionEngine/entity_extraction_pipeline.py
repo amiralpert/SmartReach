@@ -107,12 +107,39 @@ class EntityExtractionPipeline:
 
     def process_and_store_filing_entities(self, filing_data: Dict, process_sec_filing_func, storage) -> List[Dict]:
         """Extract entities and store them in database to mark filing as processed"""
+        import psycopg2
+        from kaggle_secrets import UserSecretsClient
+
         entities = self.process_filing_entities(filing_data, process_sec_filing_func)
 
+        # Store entities if any were found
         if entities:
-            # Store entities in database to mark filing as processed
             storage.store_entities(entities, filing_data)
             print(f"   💾 Stored {len(entities)} entities for {filing_data['company_domain']}")
+        else:
+            print(f"   ⚠️ No entities extracted for {filing_data['company_domain']} - {filing_data['filing_type']}")
+
+        # Mark filing as processed regardless of entity extraction success
+        try:
+            user_secrets = UserSecretsClient()
+            with psycopg2.connect(
+                host=user_secrets.get_secret("NEON_HOST"),
+                database=user_secrets.get_secret("NEON_DATABASE"),
+                user=user_secrets.get_secret("NEON_USER"),
+                password=user_secrets.get_secret("NEON_PASSWORD"),
+                port=5432,
+                sslmode='require'
+            ) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE raw_data.sec_filings
+                    SET is_processed = true, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (filing_data['id'],))
+                conn.commit()
+                print(f"   ✅ Marked filing {filing_data['id']} ({filing_data['company_domain']}) as processed")
+        except Exception as e:
+            print(f"   ❌ Failed to update is_processed flag: {e}")
 
         return entities
     
