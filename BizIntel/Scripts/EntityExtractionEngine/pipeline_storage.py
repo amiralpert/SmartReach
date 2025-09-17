@@ -24,32 +24,46 @@ class PipelineEntityStorage:
             'single_model_entities': 0
         }
     
-    def store_entities(self, entities: List[Dict], filing_ref: str) -> bool:
+    def store_entities(self, entities: List[Dict], filing_data: Dict) -> bool:
         """Store entities with enhanced tracking"""
         if not entities:
             return True
-        
+
         try:
-            with get_db_connection() as conn:
+            # Use proper database connection from Kaggle secrets
+            import psycopg2
+            from kaggle_secrets import UserSecretsClient
+
+            user_secrets = UserSecretsClient()
+            with psycopg2.connect(
+                host=user_secrets.get_secret("NEON_HOST"),
+                database=user_secrets.get_secret("NEON_DATABASE"),
+                user=user_secrets.get_secret("NEON_USER"),
+                password=user_secrets.get_secret("NEON_PASSWORD"),
+                port=5432,
+                sslmode='require'
+            ) as conn:
                 cursor = conn.cursor()
                 
                 print(f"   💾 Storing {len(entities)} entities to database...")
                 
                 # Prepare entities for batch insert
                 entity_records = []
+                # Get filing_ref from filing_data
+                filing_ref = f"SEC_{filing_data.get('id', 'UNKNOWN')}" if isinstance(filing_data, dict) else filing_data
                 for entity in entities:
                     record = self._prepare_entity_record(entity, filing_ref)
                     entity_records.append(record)
                 
-                # Batch insert
+                # Batch insert (matching actual table schema)
                 insert_query = """
                     INSERT INTO system_uno.sec_entities_raw (
-                        extraction_id, company_domain, entity_text, entity_type,
-                        confidence_score, char_start, char_end, surrounding_text,
+                        extraction_id, company_domain, entity_text, entity_category,
+                        confidence_score, character_start, character_end, surrounding_text,
                         models_detected, all_confidences, primary_model, entity_variations,
                         is_merged, section_name, data_source, extraction_timestamp,
-                        original_label, model_source, quality_score, consensus_count,
-                        detecting_models, consensus_score, filing_id, sec_filing_ref
+                        original_label, quality_score, consensus_count,
+                        detecting_models, consensus_score, sec_filing_ref
                     ) VALUES %s
                 """
                 
@@ -97,22 +111,14 @@ class PipelineEntityStorage:
         consensus_count = len(entity.get('models_detected', []))
         consensus_score = entity.get('consensus_score', entity.get('confidence_score', 0))
         
-        # Extract filing ID from filing_ref if available
-        filing_id = None
-        if filing_ref and filing_ref.startswith('SEC_'):
-            try:
-                filing_id = int(filing_ref.replace('SEC_', ''))
-            except:
-                filing_id = entity.get('filing_id')
-        
         return (
             entity.get('extraction_id', str(uuid.uuid4())),
             entity.get('company_domain', ''),
             entity.get('entity_text', ''),
-            entity_type,
+            entity_type,  # entity_category
             float(entity.get('confidence_score', 0)),
-            int(char_start),
-            int(char_end),
+            int(char_start),  # character_start
+            int(char_end),    # character_end
             entity.get('surrounding_text', ''),
             models_detected,
             all_confidences,
@@ -123,13 +129,11 @@ class PipelineEntityStorage:
             entity.get('data_source', 'sec_filings'),
             entity.get('extraction_timestamp', datetime.now()),
             entity.get('original_label', ''),
-            entity.get('model_source', entity.get('primary_model', '')),
             quality_score,
             consensus_count,
             detecting_models,
             float(consensus_score),
-            filing_id,
-            filing_ref
+            filing_ref  # sec_filing_ref
         )
     
     def _calculate_quality_score(self, entity: Dict) -> float:
