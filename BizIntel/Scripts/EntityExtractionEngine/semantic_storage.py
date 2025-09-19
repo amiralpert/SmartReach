@@ -7,7 +7,7 @@ import uuid
 import json
 from datetime import datetime
 from typing import Dict, List
-from EntityExtractionEngine.database_utils import get_db_connection
+from .database_utils import get_db_connection
 
 
 class SemanticRelationshipStorage:

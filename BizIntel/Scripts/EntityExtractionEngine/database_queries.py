@@ -4,8 +4,8 @@ Handles database operations for SEC filing retrieval.
 """
 
 from typing import List, Dict
-from EntityExtractionEngine.logging_utils import log_info
-from EntityExtractionEngine.config_data import PROBLEMATIC_FILINGS
+from .logging_utils import log_info
+from .config_data import PROBLEMATIC_FILINGS
 
 
 def get_unprocessed_filings(get_db_connection_func, limit: int = 5) -> List[Dict]:

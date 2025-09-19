@@ -5,7 +5,7 @@ Main batch processing pipeline for SEC filings with entity and relationship extr
 
 import time
 from typing import Dict, List
-from EntityExtractionEngine.database_queries import get_unprocessed_filings
+from .database_queries import get_unprocessed_filings
 
 
 def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage, 

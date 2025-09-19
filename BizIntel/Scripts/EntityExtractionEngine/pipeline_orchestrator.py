@@ -4,9 +4,9 @@ Main pipeline execution flow with comprehensive results display and analytics.
 """
 
 from typing import Dict, List
-from EntityExtractionEngine.database_queries import get_unprocessed_filings
-from EntityExtractionEngine.batch_processor import process_filings_batch
-from EntityExtractionEngine.analytics_reporter import generate_pipeline_analytics_report
+from .database_queries import get_unprocessed_filings
+from .batch_processor import process_filings_batch
+from .analytics_reporter import generate_pipeline_analytics_report
 
 
 def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_storage, 

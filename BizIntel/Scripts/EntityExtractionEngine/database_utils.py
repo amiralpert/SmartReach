@@ -5,7 +5,7 @@ Contains database connection management and utilities.
 
 import psycopg2
 from contextlib import contextmanager
-from EntityExtractionEngine.logging_utils import log_error
+from .logging_utils import log_error
 
 
 @contextmanager

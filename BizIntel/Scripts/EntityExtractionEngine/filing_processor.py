@@ -4,11 +4,11 @@ Main processing logic for SEC filings with timeout protection.
 """
 
 from typing import Dict
-from EntityExtractionEngine.timeout_utils import TimeoutError
-from EntityExtractionEngine.logging_utils import log_error, log_warning, log_info
-from EntityExtractionEngine.edgar_extraction import get_filing_sections
-from EntityExtractionEngine.model_routing import route_sections_to_models
-from EntityExtractionEngine.config_data import PROBLEMATIC_FILINGS
+from .timeout_utils import TimeoutError
+from .logging_utils import log_error, log_warning, log_info
+from .edgar_extraction import get_filing_sections
+from .model_routing import route_sections_to_models
+from .config_data import PROBLEMATIC_FILINGS
 
 
 def process_sec_filing_with_sections(filing_data: Dict, section_cache=None, config=None) -> Dict:

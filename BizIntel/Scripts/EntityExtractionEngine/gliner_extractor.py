@@ -15,9 +15,9 @@ except ImportError:
     GLINER_AVAILABLE = False
     print("Warning: GLiNER not installed. Install with: pip install gliner")
 
-from EntityExtractionEngine.gliner_config import GLINER_CONFIG
-from EntityExtractionEngine.gliner_normalization import normalize_entities, group_similar_entities
-from EntityExtractionEngine.logging_utils import log_info, log_warning, log_error
+from .gliner_config import GLINER_CONFIG
+from .gliner_normalization import normalize_entities, group_similar_entities
+from .logging_utils import log_info, log_warning, log_error
 
 
 class GLiNEREntityExtractor:

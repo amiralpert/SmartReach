@@ -3,7 +3,7 @@ Analytics Reporter for Entity Extraction Engine
 Generate comprehensive analytics reports for pipeline performance.
 """
 
-from EntityExtractionEngine.database_utils import get_db_connection
+from .database_utils import get_db_connection
 
 
 def generate_pipeline_analytics_report():

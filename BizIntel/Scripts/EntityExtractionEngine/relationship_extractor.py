@@ -10,7 +10,11 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from huggingface_hub import login
-from kaggle_secrets import UserSecretsClient
+try:
+    from kaggle_secrets import UserSecretsClient
+except ImportError:
+    # For local development - no Kaggle secrets available
+    UserSecretsClient = None
 
 
 class RelationshipExtractor:

@@ -12,15 +12,15 @@ import time
 from collections import Counter
 
 # Import configurations
-from EntityExtractionEngine.gliner_config import GLINER_CONFIG
-from EntityExtractionEngine.gliner_extractor import GLiNEREntityExtractor
-from EntityExtractionEngine import (
+from .gliner_config import GLINER_CONFIG
+from .gliner_extractor import GLiNEREntityExtractor
+from . import (
     EntityExtractionPipeline,
     get_unprocessed_filings,
     get_filing_sections,
     get_db_connection
 )
-from EntityExtractionEngine.logging_utils import log_info, log_warning, log_error
+from .logging_utils import log_info, log_warning, log_error
 
 
 class GLiNERTestRunner:
@@ -184,7 +184,7 @@ class GLiNERTestRunner:
             }
         except ImportError:
             # For local testing
-            from EntityExtractionEngine.local_secrets import SECRETS
+            from .local_secrets import SECRETS
             return {
                 'host': SECRETS.get("NEON_HOST"),
                 'database': SECRETS.get("NEON_DATABASE"),

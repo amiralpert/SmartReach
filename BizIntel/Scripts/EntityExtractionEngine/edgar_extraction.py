@@ -8,9 +8,9 @@ from typing import Dict
 from datetime import datetime
 from edgar import find
 
-from EntityExtractionEngine.timeout_utils import with_timeout, TimeoutError
-from EntityExtractionEngine.logging_utils import log_error, log_warning, log_info
-from EntityExtractionEngine.config_data import PROBLEMATIC_FILINGS, MAX_HTML_SIZE
+from .timeout_utils import with_timeout, TimeoutError
+from .logging_utils import log_error, log_warning, log_info
+from .config_data import PROBLEMATIC_FILINGS, MAX_HTML_SIZE
 
 
 @with_timeout(30)  # 30 second timeout
