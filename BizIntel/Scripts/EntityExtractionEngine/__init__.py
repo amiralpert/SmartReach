@@ -21,6 +21,21 @@ from .batch_processor import process_filings_batch
 from .analytics_reporter import generate_pipeline_analytics_report
 from .pipeline_orchestrator import execute_main_pipeline, display_pipeline_results, display_no_filings_message
 
+# GLiNER components (optional - require separate installation)
+try:
+    from .gliner_extractor import GLiNEREntityExtractor
+    from .gliner_test_runner import GLiNERTestRunner
+    from .gliner_analyzer import (
+        analyze_latest_results,
+        suggest_label_improvements,
+        analyze_normalization_effectiveness,
+        generate_next_iteration_config
+    )
+    from .gliner_normalization import normalize_entities, group_similar_entities
+    GLINER_AVAILABLE = True
+except ImportError:
+    GLINER_AVAILABLE = False
+
 __all__ = [
     'SEC_FILINGS_PROMPT',
     'SizeLimitedLRUCache', 
@@ -49,3 +64,17 @@ __all__ = [
     'display_pipeline_results',
     'display_no_filings_message'
 ]
+
+# Add GLiNER components to __all__ if available
+if GLINER_AVAILABLE:
+    __all__.extend([
+        'GLiNEREntityExtractor',
+        'GLiNERTestRunner',
+        'analyze_latest_results',
+        'suggest_label_improvements',
+        'analyze_normalization_effectiveness',
+        'generate_next_iteration_config',
+        'normalize_entities',
+        'group_similar_entities',
+        'GLINER_AVAILABLE'
+    ])
