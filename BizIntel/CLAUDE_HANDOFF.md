@@ -4,6 +4,37 @@
 
 You are taking over a **production-ready, fully modularized** SEC filing entity extraction pipeline. This system has been completely refactored for maintainability and now uses external Python modules instead of large notebook cells.
 
+## 🚨 LATEST DEVELOPMENT UPDATES (2025-01-19)
+
+### **Critical Change: New Cell -1 Logging Setup**
+**IMMEDIATE ISSUE RESOLVED**: Cell 0 package installation was not visible in console logs, making it impossible to debug UserSecretsClient import errors and package conflicts.
+
+**SOLUTION IMPLEMENTED**:
+1. **NEW Cell -1**: Minimal logging system that runs BEFORE Cell 0
+   - Initializes database connection for logging
+   - Creates `RealTimeKaggleLogger` class
+   - Provides `start_cell_logging()` function globally
+   - Clears existing console logs for fresh debugging
+
+2. **UPDATED Cell 0**: Now starts with `start_cell_logging(0)`
+   - All package installation output captured in `core.console_logs` table
+   - Import progress messages logged
+   - GitHub repository setup logged
+
+3. **GLiNER Testing Added**: New Cell 4 for optional GLiNER entity extraction testing
+   - Alternative to current 4-model NER system
+   - Version-pinned package installation (torch==2.0.1, transformers==4.35.2)
+   - Independent testing framework with GitHub-visible results
+
+### **Console Log Visibility**
+- Console logs now stored in `core.console_logs` table
+- Query with: `SELECT cell_number, console_output, created_at FROM core.console_logs WHERE cell_number IN (-1, 0) ORDER BY created_at DESC;`
+- Cell 0 execution details now fully visible for debugging
+
+### **Cell Execution Order**
+MUST run in this order:
+1. **Cell -1** (logging setup) → 2. **Cell 0** (packages + imports) → 3. **Remaining cells**
+
 ## 1. 📂 GitHub Repository Access
 
 ### Clone and Setup
@@ -20,13 +51,15 @@ https://github.com/amiralpert/SmartReach.git
 The notebook has been **completely modularized** to solve token limit issues and improve maintainability:
 
 #### **Main Notebook** (90% token reduction achieved)
-- **`sysuno-entityextactionengine.ipynb`**: Now only 5 streamlined cells:
-  - **Cell 0**: Package installation + consolidated imports (33+ imports)
-  - **Cell 1**: GitHub setup + configuration + component imports  
+- **`sysuno-entityextactionengine.ipynb`**: Now 7 cells with new logging setup:
+  - **Cell -1**: **NEW** - Minimal logging setup (BEFORE package installation)
+  - **Cell 0**: Package installation + consolidated imports (33+ imports) **NOW WITH LOGGING**
+  - **Cell 1**: GitHub setup + configuration + component imports
   - **Cell 2**: EdgarTools section extraction (imports from modules)
   - **Cell 3**: Entity extraction pipeline (imports from modules)
-  - **Cell 4**: Relationship extraction + storage (imports from modules)  
-  - **Cell 5**: Main pipeline execution (orchestrator import)
+  - **Cell 4**: **NEW** - GLiNER testing (OPTIONAL alternative entity extraction)
+  - **Cell 5**: Relationship extraction + storage (imports from modules)
+  - **Cell 6**: Main pipeline execution (orchestrator import)
 
 #### **EntityExtractionEngine Package** (17 modular files)
 ```
@@ -84,6 +117,7 @@ The schema has been enhanced for semantic relationship storage:
 - **`raw_data.sec_filings`**: Source SEC filings with accession numbers
 - **`system_uno.sec_entities_raw`**: Extracted entities with consensus scoring
 - **`core.kaggle_logs`**: Execution logs from Kaggle notebook runs
+- **`core.console_logs`**: **NEW** - Real-time console output from notebook cells
 
 #### **🆕 New Semantic Relationship Tables**
 - **`system_uno.semantic_buckets`**: Relationship type aggregations with metrics
@@ -188,11 +222,17 @@ log_error("Database", "Connection timeout")
 ### **Monitoring Queries** (Updated)
 ```sql
 -- Check latest pipeline execution
-SELECT timestamp, cell_number, message, success 
-FROM core.kaggle_logs 
+SELECT timestamp, cell_number, message, success
+FROM core.kaggle_logs
 WHERE session_name = 'SEC_EntityExtraction'
-ORDER BY timestamp DESC 
-LIMIT 10;
+ORDER BY timestamp DESC
+
+-- NEW: Check console logs for Cell 0 package installation debugging
+SELECT cell_number, console_output, created_at
+FROM core.console_logs
+WHERE cell_number IN (-1, 0)
+ORDER BY created_at DESC
+LIMIT 20;
 
 -- Monitor semantic relationship processing
 SELECT 

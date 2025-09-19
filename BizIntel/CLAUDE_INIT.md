@@ -31,7 +31,7 @@ Key requirements:
 Please confirm you've read CLAUDE_HANDOFF.md and understand the modular architecture.
 ```
 
-## 📊 Current Project State (as of 2025-01-16)
+## 📊 Current Project State (as of 2025-01-19)
 
 ### ✅ What's Working - MODULAR ARCHITECTURE
 - **EntityExtractionEngine Package** (17 modules) with clean imports
@@ -48,6 +48,9 @@ Please confirm you've read CLAUDE_HANDOFF.md and understand the modular architec
 3. **Import-based architecture** - All cells use `from EntityExtractionEngine import ...`
 4. **Semantic storage tables** - New bucketing strategy for relationship aggregation
 5. **Consensus scoring** - Multi-model agreement tracking for entity quality
+6. **NEW: Cell -1 logging setup** - Added pre-Cell 0 logging to capture package installation
+7. **NEW: GLiNER testing** - Optional Cell 4 for alternative entity extraction testing
+8. **Console log visibility** - Cell 0 execution now captured in core.console_logs table
 
 ### ⚠️ Critical Configuration Usage
 
@@ -64,15 +67,17 @@ model_name = 'meta-llama/Llama-3.1-8B-Instruct'  # NO!
 threshold = 0.75  # NO!
 ```
 
-## 🏗️ Current Notebook Structure (5 Cells - NOT 7)
+## 🏗️ Current Notebook Structure (7 Cells with New Logging Setup)
 
 ### Cell-by-Cell Breakdown
-- **Cell 0**: Package installation + consolidated imports (33+ imports)
+- **Cell -1**: **NEW** - Minimal logging setup (BEFORE package installation)
+- **Cell 0**: Package installation + consolidated imports (33+ imports) **NOW WITH LOGGING**
 - **Cell 1**: GitHub setup + **CENTRALIZED CONFIG** + EntityExtractionEngine imports
 - **Cell 2**: EdgarTools section extraction (imports from modules)
 - **Cell 3**: Entity extraction pipeline initialization (imports from modules)
-- **Cell 4**: Relationship extraction + storage setup (imports from modules)
-- **Cell 5**: Main pipeline execution (uses orchestrator)
+- **Cell 4**: GLiNER testing (OPTIONAL - alternative entity extraction)
+- **Cell 5**: Relationship extraction + storage setup (imports from modules)
+- **Cell 6**: Main pipeline execution (uses orchestrator)
 
 ### 📦 EntityExtractionEngine Package Structure
 ```
@@ -102,6 +107,11 @@ threshold = 0.75  # NO!
 ### 1. Check Recent Errors in Kaggle Logs
 ```bash
 PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT timestamp, cell_number, message, error FROM core.kaggle_logs WHERE error IS NOT NULL ORDER BY timestamp DESC LIMIT 5;"
+```
+
+### 1a. Check Console Logs for Cell 0 Package Installation (NEW)
+```bash
+PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT cell_number, console_output, created_at FROM core.console_logs WHERE cell_number IN (-1, 0) ORDER BY created_at DESC LIMIT 20;"
 ```
 
 ### 2. Check Entity Extraction with Quality Metrics
@@ -166,7 +176,14 @@ from EntityExtractionEngine import (
 # Cell 3 - Entity extraction:
 from EntityExtractionEngine import EntityExtractionPipeline
 
-# Cell 4 - Relationship extraction:
+# Cell 4 - GLiNER testing (OPTIONAL):
+from EntityExtractionEngine import (
+    GLiNERTestRunner,
+    GLiNEREntityExtractor,
+    GLINER_AVAILABLE
+)
+
+# Cell 5 - Relationship extraction:
 from EntityExtractionEngine import (
     RelationshipExtractor,
     SemanticRelationshipStorage,
@@ -175,17 +192,19 @@ from EntityExtractionEngine import (
     generate_pipeline_analytics_report
 )
 
-# Cell 5 - Main execution:
+# Cell 6 - Main execution:
 from EntityExtractionEngine import execute_main_pipeline
 ```
 
 ### Processing Flow with Modules
-1. **Cell 0**: Install packages → Import libraries → Bootstrap GitHub
-2. **Cell 1**: Setup CONFIG dictionary → Import base modules → Initialize cache
-3. **Cell 2**: Import EdgarTools modules → Create wrapper functions
-4. **Cell 3**: Import & initialize EntityExtractionPipeline(CONFIG)
-5. **Cell 4**: Import & initialize RelationshipExtractor(CONFIG) + storage
-6. **Cell 5**: Import & execute execute_main_pipeline() orchestrator
+1. **Cell -1**: **NEW** → Initialize logging system → Clear console logs → Start Cell -1 logging
+2. **Cell 0**: **NOW WITH LOGGING** → Install packages → Import libraries → Bootstrap GitHub
+3. **Cell 1**: Setup CONFIG dictionary → Import base modules → Initialize cache
+4. **Cell 2**: Import EdgarTools modules → Create wrapper functions
+5. **Cell 3**: Import & initialize EntityExtractionPipeline(CONFIG)
+6. **Cell 4**: **OPTIONAL GLiNER testing** → Test alternative entity extraction
+7. **Cell 5**: Import & initialize RelationshipExtractor(CONFIG) + storage
+8. **Cell 6**: Import & execute execute_main_pipeline() orchestrator
 
 ## 📝 Module-First Debugging Checklist
 
