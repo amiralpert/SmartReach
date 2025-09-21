@@ -69,3 +69,12 @@ temp/
 !create_schema.sql
 !setup_database.sql
 !test_data.sql
+
+# GLiNER test results should be committed
+!test_results/
+!test_results/*.json
+!test_results/*.csv
+!test_results/*.md
+
+# Keep the main notebook file
+!sysuno-entityextactionengine.ipynb
