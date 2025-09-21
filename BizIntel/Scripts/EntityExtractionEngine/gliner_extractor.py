@@ -1,13 +1,16 @@
 """
-GLiNER Entity Extractor for SEC Filings
-Alternative to 4-model ensemble approach
+GLiNER Entity and Relationship Extractor for SEC Filings
+Enhanced pipeline with GLiNER entity extraction and GLiREL relationship extraction
+Designed to work with existing Llama 3.1 semantic analysis architecture
 """
 
 import time
+import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+from dataclasses import dataclass
 
-# GLiNER will be installed in Kaggle environment
+# GLiNER and GLiREL will be installed in Kaggle environment
 try:
     from gliner import GLiNER
     GLINER_AVAILABLE = True
@@ -15,23 +18,51 @@ except ImportError:
     GLINER_AVAILABLE = False
     print("Warning: GLiNER not installed. Install with: pip install gliner")
 
+try:
+    from glirel import GLiREL
+    GLIREL_AVAILABLE = True
+except ImportError:
+    GLIREL_AVAILABLE = False
+    print("Warning: GLiREL not installed. Install with: pip install glirel")
+
 from .gliner_config import GLINER_CONFIG
 from .gliner_normalization import normalize_entities, group_similar_entities
 from .logging_utils import log_info, log_warning, log_error
 
+@dataclass
+class GLiNEREntity:
+    """Represents a GLiNER-extracted entity with position and metadata"""
+    start: int
+    end: int
+    text: str
+    label: str
+    score: float
+    canonical_name: str = None
+    entity_id: str = None
+    coreference_group: Dict = None
+
+@dataclass
+class GLiNERRelationship:
+    """Represents a basic relationship extracted by GLiREL"""
+    head_entity: str
+    relation: str
+    tail_entity: str
+    confidence: float
+    context: str = None
 
 class GLiNEREntityExtractor:
-    """GLiNER-based entity extraction with built-in normalization"""
+    """Enhanced GLiNER-based entity and relationship extraction with built-in normalization"""
 
     def __init__(self, model_size: str = None, labels: List[str] = None,
-                 threshold: float = None, debug: bool = False):
+                 threshold: float = None, enable_relationships: bool = True, debug: bool = False):
         """
-        Initialize GLiNER model
+        Initialize GLiNER and GLiREL models
 
         Args:
             model_size: 'small', 'medium', or 'large' (defaults to config)
             labels: List of entity labels (defaults to config)
             threshold: Confidence threshold (defaults to config)
+            enable_relationships: Whether to load GLiREL for relationship extraction
             debug: Enable debug output
         """
         if not GLINER_AVAILABLE:
@@ -41,6 +72,7 @@ class GLiNEREntityExtractor:
         self.model_size = model_size or GLINER_CONFIG['model_size']
         self.labels = labels or GLINER_CONFIG['labels']
         self.threshold = threshold or GLINER_CONFIG['threshold']
+        self.enable_relationships = enable_relationships and GLIREL_AVAILABLE
         self.debug = debug or GLINER_CONFIG['output'].get('verbose', False)
 
         # Model name mapping
@@ -50,25 +82,42 @@ class GLiNEREntityExtractor:
             'large': 'urchade/gliner_large-v2.1'
         }
 
-        # Load model
+        # Load GLiNER entity model
         self.model_name = model_map.get(self.model_size, model_map['medium'])
 
         if self.debug:
-            print(f"Loading GLiNER model: {self.model_name}")
+            print(f"Loading GLiNER entity model: {self.model_name}")
 
-        self.model = GLiNER.from_pretrained(self.model_name)
+        self.entity_model = GLiNER.from_pretrained(self.model_name)
+
+        # Load GLiREL relationship model if enabled
+        self.relation_model = None
+        if self.enable_relationships:
+            try:
+                if self.debug:
+                    print("Loading GLiREL relationship model...")
+                self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-base")
+                if self.debug:
+                    print("✅ GLiREL relationship model loaded successfully")
+            except Exception as e:
+                if self.debug:
+                    print(f"⚠️  Could not load GLiREL: {e}")
+                self.enable_relationships = False
 
         if self.debug:
-            print(f"✅ GLiNER model loaded successfully")
+            print(f"✅ GLiNER entity model loaded successfully")
             print(f"   Labels: {', '.join(self.labels)}")
             print(f"   Threshold: {self.threshold}")
+            print(f"   Relationships: {'Enabled' if self.enable_relationships else 'Disabled'}")
 
         # Track extraction statistics
         self.stats = {
             'total_extractions': 0,
             'total_entities_found': 0,
+            'total_relationships_found': 0,
             'total_time': 0,
-            'entities_by_label': {}
+            'entities_by_label': {},
+            'relationships_by_type': {}
         }
 
     def extract_entities(self, text: str, threshold: float = None) -> List[Dict]:
@@ -95,7 +144,7 @@ class GLiNEREntityExtractor:
         start_time = time.time()
 
         # GLiNER extraction
-        entities = self.model.predict_entities(text, self.labels, threshold=threshold)
+        entities = self.entity_model.predict_entities(text, self.labels, threshold=threshold)
 
         extraction_time = time.time() - start_time
 
@@ -120,6 +169,95 @@ class GLiNEREntityExtractor:
                     print(f"    - {label}: {count}")
 
         return entities
+
+    def extract_relationships(self, text: str, entities: List[Dict] = None,
+                            relation_types: List[str] = None) -> List[Dict]:
+        """
+        Extract relationships between entities using GLiREL
+
+        Args:
+            text: Input text for relationship extraction
+            entities: List of entities to find relationships between (auto-extract if None)
+            relation_types: Types of relations to extract (uses default if None)
+
+        Returns:
+            List of relationship dictionaries
+        """
+        if not self.enable_relationships or not self.relation_model:
+            return []
+
+        # Auto-extract entities if not provided
+        if entities is None:
+            entities = self.extract_entities(text)
+
+        if not entities:
+            return []
+
+        # Default relation types for SEC filings
+        if relation_types is None:
+            relation_types = [
+                'employed_by', 'subsidiary_of', 'owns', 'part_of',
+                'located_in', 'affiliated_with', 'contracts_with',
+                'acquired_by', 'merged_with', 'partner_of'
+            ]
+
+        if self.debug:
+            print(f"\n🔗 GLiREL Relationship Extraction:")
+            print(f"  Entities: {len(entities)}")
+            print(f"  Relation types: {len(relation_types)}")
+
+        start_time = time.time()
+
+        try:
+            # Prepare entity list for GLiREL
+            entity_texts = [entity['text'] for entity in entities]
+
+            # Extract relationships using GLiREL
+            relations = self.relation_model.predict_relations(
+                text,
+                entity_texts,
+                relations=relation_types
+            )
+
+            extraction_time = time.time() - start_time
+
+            # Filter by confidence and convert to our format
+            filtered_relations = []
+            confidence_threshold = GLINER_CONFIG.get('relation_threshold', 0.6)
+
+            for relation in relations:
+                if relation.get('confidence', 0) >= confidence_threshold:
+                    rel_dict = {
+                        'head_entity': relation['head_text'],
+                        'relation': relation['relation'],
+                        'tail_entity': relation['tail_text'],
+                        'confidence': relation['confidence'],
+                        'context': text[max(0, relation.get('start', 0)-50):
+                                     min(len(text), relation.get('end', len(text))+50)]
+                    }
+                    filtered_relations.append(rel_dict)
+
+                    # Update stats
+                    rel_type = relation['relation']
+                    self.stats['relationships_by_type'][rel_type] = \
+                        self.stats['relationships_by_type'].get(rel_type, 0) + 1
+
+            self.stats['total_relationships_found'] += len(filtered_relations)
+
+            if self.debug:
+                print(f"  Found {len(filtered_relations)} relationships in {extraction_time:.3f}s")
+                if filtered_relations:
+                    from collections import Counter
+                    rel_counts = Counter(r['relation'] for r in filtered_relations)
+                    for rel_type, count in rel_counts.most_common():
+                        print(f"    - {rel_type}: {count}")
+
+            return filtered_relations
+
+        except Exception as e:
+            if self.debug:
+                print(f"⚠️  Error extracting relationships: {e}")
+            return []
 
     def extract_with_normalization(self, text: str, filing_context: Dict = None,
                                   threshold: float = None) -> List[Dict]:
@@ -160,6 +298,93 @@ class GLiNEREntityExtractor:
                     print(f"    • {group['canonical_name']}: {mentions}")
 
         return normalized
+
+    def extract_with_relationships(self, text: str, filing_context: Dict = None,
+                                 include_full_text: bool = True) -> Dict:
+        """
+        Complete extraction pipeline with entities, relationships, and database-ready format
+
+        Args:
+            text: Input text for extraction
+            filing_context: Filing metadata (accession, company, etc.)
+            include_full_text: Whether to include full text in output
+
+        Returns:
+            Dictionary ready for database storage in system_uno.sec_entities_raw format
+        """
+        start_time = time.time()
+
+        try:
+            # Extract entities
+            raw_entities = self.extract_entities(text)
+            normalized_entities = self.normalize_entities(raw_entities, filing_context or {},
+                                                       GLINER_CONFIG['normalization'])
+
+            # Extract relationships
+            relationships = self.extract_relationships(text, raw_entities)
+
+            processing_time = time.time() - start_time
+
+            # Format for database storage
+            results = []
+            for entity in normalized_entities:
+                for mention in entity.get('mentions', [entity]):
+                    entity_record = {
+                        'accession_number': filing_context.get('accession', ''),
+                        'section_type': filing_context.get('section', ''),
+                        'entity_text': mention['text'],
+                        'entity_type': mention['label'],
+                        'start_position': mention['start'],
+                        'end_position': mention['end'],
+                        'confidence_score': mention['score'],
+                        'canonical_name': entity.get('canonical_name', mention['text']),
+                        'gliner_entity_id': entity.get('entity_id', f"E{mention.get('start', 0):06d}"),
+                        'coreference_group': entity.get('coreference_group', {}),
+                        'basic_relationships': [r for r in relationships
+                                              if r['head_entity'] == mention['text'] or
+                                                 r['tail_entity'] == mention['text']],
+                        'section_full_text': text if include_full_text else None,
+                        'is_canonical_mention': entity.get('canonical_name') == mention['text'],
+                        'extraction_timestamp': datetime.now().isoformat(),
+                        'processing_metadata': {
+                            'gliner_model': self.model_name,
+                            'glirel_enabled': self.enable_relationships,
+                            'processing_time_seconds': processing_time,
+                            'entity_count': len(normalized_entities),
+                            'relationship_count': len(relationships)
+                        }
+                    }
+                    results.append(entity_record)
+
+            summary = {
+                'filing': filing_context,
+                'entity_records': results,
+                'summary': {
+                    'total_entities': len(normalized_entities),
+                    'total_mentions': len(results),
+                    'total_relationships': len(relationships),
+                    'processing_time': processing_time
+                },
+                'relationships': relationships
+            }
+
+            if self.debug:
+                print(f"\n📊 Complete Extraction Summary:")
+                print(f"  Entities: {len(normalized_entities)} groups, {len(results)} mentions")
+                print(f"  Relationships: {len(relationships)}")
+                print(f"  Processing time: {processing_time:.2f}s")
+
+            return summary
+
+        except Exception as e:
+            if self.debug:
+                print(f"⚠️  Error in complete extraction: {e}")
+            return {
+                'filing': filing_context,
+                'entity_records': [],
+                'summary': {'error': str(e)},
+                'relationships': []
+            }
 
     def process_filing_sections(self, sections: Dict[str, str],
                               filing_context: Dict) -> Dict:

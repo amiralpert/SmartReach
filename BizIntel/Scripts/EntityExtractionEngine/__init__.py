@@ -23,7 +23,10 @@ from .pipeline_orchestrator import execute_main_pipeline, display_pipeline_resul
 
 # GLiNER components (optional - require separate installation)
 try:
-    from .gliner_extractor import GLiNEREntityExtractor
+    from .gliner_extractor import GLiNEREntityExtractor, GLiNEREntity, GLiNERRelationship
+    from .gliner_storage import GLiNEREntityStorage, create_gliner_storage
+    from .gliner_llama_bridge import GLiNERLlamaBridge, EntityContext, create_gliner_llama_bridge
+    from .gliner_config import GLINER_CONFIG
     from .gliner_test_runner import GLiNERTestRunner
     from .gliner_analyzer import (
         analyze_latest_results,
@@ -69,6 +72,14 @@ __all__ = [
 if GLINER_AVAILABLE:
     __all__.extend([
         'GLiNEREntityExtractor',
+        'GLiNEREntity',
+        'GLiNERRelationship',
+        'GLiNEREntityStorage',
+        'create_gliner_storage',
+        'GLiNERLlamaBridge',
+        'EntityContext',
+        'create_gliner_llama_bridge',
+        'GLINER_CONFIG',
         'GLiNERTestRunner',
         'analyze_latest_results',
         'suggest_label_improvements',
