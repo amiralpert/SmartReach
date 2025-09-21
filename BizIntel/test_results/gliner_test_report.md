@@ -1,6 +1,6 @@
 # GLiNER Test Report
 
-**Generated**: 2025-09-21T01:54:09.410557
+**Generated**: 2025-09-21T02:07:58.502094
 **Test Name**: iteration_1_baseline
 
 ## Configuration
@@ -16,8 +16,8 @@
 - **Speed Improvement**: 0.05x faster
 - **Entity Reduction**: 0.0%
 - **Groups Formed**: 0 total
-- **Avg Time (Current)**: 0.299s
-- **Avg Time (GLiNER)**: 5.802s
+- **Avg Time (Current)**: 0.280s
+- **Avg Time (GLiNER)**: 5.755s
 
 ## Test Case Details
 
@@ -59,7 +59,7 @@
 **Results**:
 - Current System: 0 entities (0 unique)
 - GLiNER: 2 raw → 2 groups
-- Speed: 0.07x faster
+- Speed: 0.06x faster
 - Reduction: 0.0%
 
 ### Test 4: guardanthealth.com
@@ -71,7 +71,7 @@
 **Results**:
 - Current System: 0 entities (0 unique)
 - GLiNER: 9 raw → 9 groups
-- Speed: 0.05x faster
+- Speed: 0.04x faster
 - Reduction: 0.0%
 
 **Filing Company Normalization**:

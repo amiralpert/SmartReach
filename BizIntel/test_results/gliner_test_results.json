@@ -1,6 +1,6 @@
 {
   "test_metadata": {
-    "timestamp": "2025-09-21T01:54:09.410557",
+    "timestamp": "2025-09-21T02:07:58.502094",
     "test_name": "iteration_1_baseline",
     "config": {
       "test_name": "iteration_1_baseline",
@@ -65,13 +65,13 @@
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.2884180545806885,
+        "time_seconds": 0.2818026542663574,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 2,
         "normalized_group_count": 2,
-        "time_seconds": 6.653404235839844,
+        "time_seconds": 6.607255935668945,
         "sample_raw": [
           {
             "start": 850,
@@ -135,7 +135,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.04334894504486426,
+        "speed_improvement": 0.04265048259218471,
         "entity_reduction": -2,
         "reduction_percentage": 0
       }
@@ -151,13 +151,13 @@
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.28566598892211914,
+        "time_seconds": 0.27692461013793945,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 3,
         "normalized_group_count": 3,
-        "time_seconds": 5.068937063217163,
+        "time_seconds": 4.957803010940552,
         "sample_raw": [
           {
             "start": 61,
@@ -245,7 +245,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.056356191714247106,
+        "speed_improvement": 0.05585631569605338,
         "entity_reduction": -3,
         "reduction_percentage": 0
       }
@@ -261,13 +261,13 @@
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.288409948348999,
+        "time_seconds": 0.27976346015930176,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 2,
         "normalized_group_count": 2,
-        "time_seconds": 4.342852592468262,
+        "time_seconds": 4.318204164505005,
         "sample_raw": [
           {
             "start": 466,
@@ -331,7 +331,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.06641025505889463,
+        "speed_improvement": 0.06478699234716963,
         "entity_reduction": -2,
         "reduction_percentage": 0
       }
@@ -347,13 +347,13 @@
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.35697078704833984,
+        "time_seconds": 0.2811465263366699,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 9,
         "normalized_group_count": 9,
-        "time_seconds": 7.69047212600708,
+        "time_seconds": 7.624473810195923,
         "sample_raw": [
           {
             "start": 194,
@@ -513,7 +513,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.04641727857528564,
+        "speed_improvement": 0.03687422021972234,
         "entity_reduction": -9,
         "reduction_percentage": 0
       }
@@ -529,13 +529,13 @@
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.27556586265563965,
+        "time_seconds": 0.2812690734863281,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 4,
         "normalized_group_count": 4,
-        "time_seconds": 5.254135847091675,
+        "time_seconds": 5.268792152404785,
         "sample_raw": [
           {
             "start": 180,
@@ -643,7 +643,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.0524474186955356,
+        "speed_improvement": 0.053383975938005285,
         "entity_reduction": -4,
         "reduction_percentage": 0
       }
@@ -651,14 +651,14 @@
   ],
   "aggregate_metrics": {
     "test_count": 5,
-    "average_speed_improvement": 0.05299601781776544,
+    "average_speed_improvement": 0.05071039735862707,
     "average_entity_reduction": -4.0,
     "average_reduction_percentage": 0.0,
     "total_current_entities": 0,
     "total_gliner_groups": 20,
     "total_groups_formed": 0,
-    "average_current_time": 0.29900612831115725,
-    "average_gliner_time": 5.801960372924805,
+    "average_current_time": 0.2801812648773193,
+    "average_gliner_time": 5.755305814743042,
     "filing_company_normalization_success": 2
   },
   "errors": []
