@@ -27,13 +27,22 @@ from .logging_utils import log_info, log_warning, log_error
 class GLiNERTestRunner:
     """Orchestrates GLiNER testing with output to files for GitHub visibility"""
 
-    def __init__(self, output_dir: str = "test_results"):
+    def __init__(self, output_dir: str = None):
         """
         Initialize test runner
 
         Args:
-            output_dir: Directory for test outputs
+            output_dir: Directory for test outputs (auto-detected if None)
         """
+        # Smart path selection for Kaggle vs local environment
+        if output_dir is None:
+            if os.path.exists("/kaggle/working/SmartReach"):
+                # In Kaggle: save directly to repo directory
+                output_dir = "/kaggle/working/SmartReach/BizIntel/test_results"
+            else:
+                # Local: use relative path
+                output_dir = "test_results"
+
         self.output_dir = output_dir
         self.ensure_output_dirs()
         self.test_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -42,6 +51,7 @@ class GLiNERTestRunner:
         """Create output directories if they don't exist"""
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(f"{self.output_dir}/test_samples", exist_ok=True)
+        print(f"📁 Test results will be saved to: {os.path.abspath(self.output_dir)}")
 
     def run_and_save_results(self, custom_config: Dict = None) -> Dict:
         """
@@ -152,6 +162,7 @@ class GLiNERTestRunner:
         self._save_csv_comparison(all_results)
 
         # Auto-commit results to GitHub
+        print(f"\n📁 Files saved to: {self.output_dir}")
         self._commit_results_to_github()
 
         # Print summary
@@ -579,30 +590,38 @@ class GLiNERTestRunner:
             # Navigate to the repository root
             repo_path = "/kaggle/working/SmartReach/BizIntel" if os.path.exists("/kaggle/working/SmartReach") else os.getcwd()
 
-            # Git commands to add and commit the test results
+            # Git commands to add and commit the test results (no error suppression)
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
             commands = [
-                f"cd {repo_path} && git add {self.output_dir}/gliner_test_results.json {self.output_dir}/gliner_test_report.md {self.output_dir}/gliner_comparison.csv 2>/dev/null || true",
-                f"cd {repo_path} && git commit -m 'GLiNER test results - {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison' 2>/dev/null || true",
-                f"cd {repo_path} && git push origin main 2>/dev/null || true"
+                f"cd {repo_path} && git add test_results/gliner_test_results.json test_results/gliner_test_report.md test_results/gliner_comparison.csv",
+                f"cd {repo_path} && git commit -m 'GLiNER test results - {timestamp}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison'",
+                f"cd {repo_path} && git push origin main"
             ]
 
-            # Execute git commands
-            push_successful = False
-            for cmd in commands:
+            # Execute git commands with proper error handling
+            all_successful = True
+            for i, cmd in enumerate(commands):
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                if "git push" in cmd and result.returncode == 0:
-                    push_successful = True
-                elif result.returncode != 0 and "nothing to commit" not in result.stdout:
-                    # Log but don't fail if Git operations have issues
-                    from .logging_utils import log_warning
-                    log_warning("GLiNER", f"Git operation warning: {result.stderr}")
 
-            # Check if push was successful
-            if push_successful:
+                if result.returncode != 0:
+                    all_successful = False
+                    # Check for common non-error conditions
+                    if "nothing to commit" in result.stdout or "nothing to commit" in result.stderr:
+                        print("  ℹ️ No changes to commit (results may already exist)")
+                        break
+                    else:
+                        # Real error occurred
+                        from .logging_utils import log_warning
+                        log_warning("GLiNER", f"Git {['add', 'commit', 'push'][i]} failed: {result.stderr}")
+                        print(f"  ⚠️ Git {['add', 'commit', 'push'][i]} failed: {result.stderr.strip()}")
+                        break
+
+            # Report final status
+            if all_successful:
                 print("  ✅ Results committed and pushed to GitHub")
                 print("  📊 Results available at: https://github.com/amiralpert/SmartReach/tree/main/BizIntel/test_results")
             else:
-                print("  ℹ️ No changes to commit (results may already be committed)")
+                print(f"  💡 Manual commit needed - files saved to: {self.output_dir}/")
 
         except Exception as e:
             # Don't fail the test if Git operations fail
@@ -610,3 +629,4 @@ class GLiNERTestRunner:
             log_warning("GLiNER", f"Could not auto-commit results to GitHub: {e}")
             print(f"  ⚠️ Could not auto-commit to GitHub: {e}")
             print(f"  💡 You can manually commit the results from {self.output_dir}/")
+            print(f"  📂 Files should be visible at: {os.path.abspath(self.output_dir)}")
