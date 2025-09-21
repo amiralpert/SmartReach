@@ -75,6 +75,9 @@ temp/
 !test_results/*.json
 !test_results/*.csv
 !test_results/*.md
+!test_results/test_samples/
+!test_results/test_samples/*.json
+!test_results/test_samples/*.txt
 
 # Keep the main notebook file
 !sysuno-entityextactionengine.ipynb

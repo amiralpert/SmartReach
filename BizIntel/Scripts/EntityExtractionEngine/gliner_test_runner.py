@@ -297,6 +297,7 @@ class GLiNERTestRunner:
             "filing": filing_info,
             "section_used": section_name,
             "text_sample": test_text[:500] + "..." if len(test_text) > 500 else test_text,
+            "full_text": test_text,  # Include full text for verification
             "current_system": {
                 "entity_count": len(current_entities),
                 "unique_entities": len(set(e.get('entity_text', '') for e in current_entities)),
@@ -556,6 +557,24 @@ class GLiNERTestRunner:
         with open(output_file, 'w') as f:
             json.dump(test_case, f, indent=2, default=str)
 
+        # Save full text as separate readable file
+        if 'full_text' in test_case and test_case['full_text']:
+            text_file = f"{self.output_dir}/test_samples/sample_{index:03d}_full_text.txt"
+            with open(text_file, 'w', encoding='utf-8') as f:
+                filing = test_case.get('filing', {})
+                f.write(f"Full Text Analysis for GLiNER Test Case {index}\n")
+                f.write(f"=" * 60 + "\n\n")
+                f.write(f"Filing: {filing.get('accession', 'Unknown')}\n")
+                f.write(f"Company: {filing.get('company', 'Unknown')}\n")
+                f.write(f"Type: {filing.get('type', 'Unknown')}\n")
+                f.write(f"Section: {test_case.get('section_used', 'Unknown')}\n")
+                f.write(f"Text Length: {len(test_case['full_text']):,} characters\n\n")
+                f.write("FULL TEXT CONTENT:\n")
+                f.write("-" * 40 + "\n\n")
+                f.write(test_case['full_text'])
+                f.write("\n\n" + "-" * 40 + "\n")
+                f.write("END OF FULL TEXT\n")
+
     def _print_summary(self, results: Dict):
         """Print test summary"""
         print(f"\n{'='*80}")
@@ -578,6 +597,7 @@ class GLiNERTestRunner:
         print(f"  • gliner_test_results.json")
         print(f"  • gliner_test_report.md")
         print(f"  • gliner_comparison.csv")
+        print(f"  • test_samples/ (individual test cases with full text)")
 
         if results.get('errors'):
             print(f"\n⚠️ {len(results['errors'])} errors occurred during testing")
@@ -595,7 +615,7 @@ class GLiNERTestRunner:
             commands = [
                 f"cd {repo_path} && git config user.email 'noreply@github.com'",
                 f"cd {repo_path} && git config user.name 'Automated Test Runner'",
-                f"cd {repo_path} && git add test_results/gliner_test_results.json test_results/gliner_test_report.md test_results/gliner_comparison.csv",
+                f"cd {repo_path} && git add test_results/gliner_test_results.json test_results/gliner_test_report.md test_results/gliner_comparison.csv test_results/test_samples/",
                 f"cd {repo_path} && git commit -m 'GLiNER test results - {timestamp}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison'",
                 f"cd {repo_path} && git push origin main"
             ]
