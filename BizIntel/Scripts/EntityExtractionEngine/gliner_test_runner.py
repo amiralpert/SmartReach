@@ -582,7 +582,7 @@ class GLiNERTestRunner:
             # Git commands to add and commit the test results
             commands = [
                 f"cd {repo_path} && git add {self.output_dir}/gliner_test_results.json {self.output_dir}/gliner_test_report.md {self.output_dir}/gliner_comparison.csv 2>/dev/null || true",
-                f"cd {repo_path} && git commit -m 'GLiNER test results - {datetime.now().strftime("%Y-%m-%d %H:%M")}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison' 2>/dev/null || true",
+                f"cd {repo_path} && git commit -m 'GLiNER test results - {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison' 2>/dev/null || true",
                 f"cd {repo_path} && git push origin main 2>/dev/null || true"
             ]
 
