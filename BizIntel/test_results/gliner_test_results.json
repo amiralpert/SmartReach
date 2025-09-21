@@ -1,0 +1,665 @@
+{
+  "test_metadata": {
+    "timestamp": "2025-09-21T01:39:14.051085",
+    "test_name": "iteration_1_baseline",
+    "config": {
+      "test_name": "iteration_1_baseline",
+      "model_size": "medium",
+      "threshold": 0.7,
+      "labels": [
+        "Filing Company",
+        "Private Company",
+        "Government Agency",
+        "Person",
+        "Financial Amount",
+        "Product",
+        "Date"
+      ],
+      "test_filing_limit": 5,
+      "max_text_length": 5000,
+      "save_individual_samples": true,
+      "normalization": {
+        "group_similar_names": true,
+        "similarity_threshold": 0.85,
+        "remove_suffixes": [
+          "Corporation",
+          "Corp",
+          "Inc",
+          "Incorporated",
+          "LLC",
+          "Ltd",
+          "Limited",
+          "Company",
+          "Co",
+          "LP",
+          "LLP",
+          "PLC",
+          "AG",
+          "SA",
+          "GmbH",
+          "Holdings",
+          "Group",
+          "International",
+          "Global"
+        ],
+        "merge_filing_company_mentions": true
+      },
+      "output": {
+        "save_json": true,
+        "save_markdown": true,
+        "save_csv": true,
+        "verbose": true
+      }
+    },
+    "filing_count": 5
+  },
+  "test_cases": [
+    {
+      "filing": {
+        "accession": "0001124140-25-000083",
+        "type": "10-Q",
+        "company": "exactsciences.com"
+      },
+      "section_used": "Item 2",
+      "text_sample": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nObjective\nThe purpose of this Management\u2019s Discussion and Analysis is to better allow our investors to understand and view our Company from management\u2019s perspective. We are providing an overview of our business and strategy including a discussion of our financial condition and results of operations. The following discussion of our financial condition and results of operations should be read in conjuncti...",
+      "current_system": {
+        "entity_count": 0,
+        "unique_entities": 0,
+        "time_seconds": 0.27733874320983887,
+        "sample_entities": []
+      },
+      "gliner_system": {
+        "raw_entity_count": 2,
+        "normalized_group_count": 2,
+        "time_seconds": 6.607895612716675,
+        "sample_raw": [
+          {
+            "start": 850,
+            "end": 867,
+            "text": "December 31, 2024",
+            "label": "Date",
+            "score": 0.9068764448165894
+          },
+          {
+            "start": 922,
+            "end": 961,
+            "text": "U.S. Securities and Exchange Commission",
+            "label": "Government Agency",
+            "score": 0.7060485482215881
+          }
+        ],
+        "sample_normalized": [
+          {
+            "entity_id": "E001",
+            "canonical_name": "December 31, 2024",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 850,
+                "end": 867,
+                "text": "December 31, 2024",
+                "label": "Date",
+                "score": 0.9068764448165894
+              }
+            ],
+            "confidence": 0.9068764448165894
+          },
+          {
+            "entity_id": "E002",
+            "canonical_name": "U.S. Securities and Exchange Commission",
+            "label": "Government Agency",
+            "mentions": [
+              {
+                "start": 922,
+                "end": 961,
+                "text": "U.S. Securities and Exchange Commission",
+                "label": "Government Agency",
+                "score": 0.7060485482215881
+              }
+            ],
+            "confidence": 0.7060485482215881
+          }
+        ]
+      },
+      "normalization_analysis": {
+        "current_duplicates": {},
+        "current_duplicate_count": 0,
+        "gliner_groups": [],
+        "groups_formed": 0,
+        "filing_company_analysis": {
+          "company_name": "exactsciences.com",
+          "current_variations": [],
+          "current_variation_count": 0,
+          "gliner_canonical": null,
+          "gliner_mentions": []
+        }
+      },
+      "performance": {
+        "speed_improvement": 0.0419708118082419,
+        "entity_reduction": -2,
+        "reduction_percentage": 0
+      }
+    },
+    {
+      "filing": {
+        "accession": "0001576280-25-000245",
+        "type": "8-K",
+        "company": "guardanthealth.com"
+      },
+      "section_used": "Item 2.02",
+      "text_sample": "Item 2.02 Results of Operations and Financial Condition. \nOn July 30, 2025, Guardant Health, Inc. (the \u201cCompany\u201d) issued a press release announcing financial results for the fiscal quarter ended June 30, 2025. The full text of the press release is furnished as Exhibit 99.1 to this Current Report on Form 8-K and is incorporated herein by reference.\nThe information furnished in this Current Report on Form 8-K (including Exhibit 99.1) shall not be deemed \u201cfiled\u201d for purposes of Section 18 of the Se...",
+      "current_system": {
+        "entity_count": 0,
+        "unique_entities": 0,
+        "time_seconds": 0.28112101554870605,
+        "sample_entities": []
+      },
+      "gliner_system": {
+        "raw_entity_count": 3,
+        "normalized_group_count": 3,
+        "time_seconds": 4.928459167480469,
+        "sample_raw": [
+          {
+            "start": 61,
+            "end": 74,
+            "text": "July 30, 2025",
+            "label": "Date",
+            "score": 0.9584334492683411
+          },
+          {
+            "start": 76,
+            "end": 97,
+            "text": "Guardant Health, Inc.",
+            "label": "Filing Company",
+            "score": 0.7786996364593506
+          },
+          {
+            "start": 195,
+            "end": 208,
+            "text": "June 30, 2025",
+            "label": "Date",
+            "score": 0.8656725883483887
+          }
+        ],
+        "sample_normalized": [
+          {
+            "entity_id": "E001",
+            "canonical_name": "July 30, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 61,
+                "end": 74,
+                "text": "July 30, 2025",
+                "label": "Date",
+                "score": 0.9584334492683411
+              }
+            ],
+            "confidence": 0.9584334492683411
+          },
+          {
+            "entity_id": "E002",
+            "canonical_name": "June 30, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 195,
+                "end": 208,
+                "text": "June 30, 2025",
+                "label": "Date",
+                "score": 0.8656725883483887
+              }
+            ],
+            "confidence": 0.8656725883483887
+          },
+          {
+            "entity_id": "E003",
+            "canonical_name": "Guardant Health, Inc.",
+            "label": "Filing Company",
+            "mentions": [
+              {
+                "start": 76,
+                "end": 97,
+                "text": "Guardant Health, Inc.",
+                "label": "Filing Company",
+                "score": 0.7786996364593506
+              }
+            ],
+            "confidence": 0.7786996364593506
+          }
+        ]
+      },
+      "normalization_analysis": {
+        "current_duplicates": {},
+        "current_duplicate_count": 0,
+        "gliner_groups": [],
+        "groups_formed": 0,
+        "filing_company_analysis": {
+          "company_name": "guardanthealth.com",
+          "current_variations": [],
+          "current_variation_count": 0,
+          "gliner_canonical": "Guardant Health, Inc.",
+          "gliner_mentions": [
+            "Guardant Health, Inc."
+          ]
+        }
+      },
+      "performance": {
+        "speed_improvement": 0.05704034587597506,
+        "entity_reduction": -3,
+        "reduction_percentage": 0
+      }
+    },
+    {
+      "filing": {
+        "accession": "0001576280-25-000246",
+        "type": "10-Q",
+        "company": "guardanthealth.com"
+      },
+      "section_used": "Item 1",
+      "text_sample": "Item 1. Unaudited Condensed Consolidated Financial Statements\nGuardant Health, Inc.\nCondensed Consolidated Balance Sheets (unaudited)\n(in thousands, except share and per share data)\n\n                                                                                                                                                                                                                                                                                           June 30, 2025                Decem...",
+      "current_system": {
+        "entity_count": 0,
+        "unique_entities": 0,
+        "time_seconds": 0.29545021057128906,
+        "sample_entities": []
+      },
+      "gliner_system": {
+        "raw_entity_count": 2,
+        "normalized_group_count": 2,
+        "time_seconds": 4.3090996742248535,
+        "sample_raw": [
+          {
+            "start": 466,
+            "end": 479,
+            "text": "June 30, 2025",
+            "label": "Date",
+            "score": 0.7768142223358154
+          },
+          {
+            "start": 495,
+            "end": 512,
+            "text": "December 31, 2024",
+            "label": "Date",
+            "score": 0.7046296000480652
+          }
+        ],
+        "sample_normalized": [
+          {
+            "entity_id": "E001",
+            "canonical_name": "June 30, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 466,
+                "end": 479,
+                "text": "June 30, 2025",
+                "label": "Date",
+                "score": 0.7768142223358154
+              }
+            ],
+            "confidence": 0.7768142223358154
+          },
+          {
+            "entity_id": "E002",
+            "canonical_name": "December 31, 2024",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 495,
+                "end": 512,
+                "text": "December 31, 2024",
+                "label": "Date",
+                "score": 0.7046296000480652
+              }
+            ],
+            "confidence": 0.7046296000480652
+          }
+        ]
+      },
+      "normalization_analysis": {
+        "current_duplicates": {},
+        "current_duplicate_count": 0,
+        "gliner_groups": [],
+        "groups_formed": 0,
+        "filing_company_analysis": {
+          "company_name": "guardanthealth.com",
+          "current_variations": [],
+          "current_variation_count": 0,
+          "gliner_canonical": null,
+          "gliner_mentions": []
+        }
+      },
+      "performance": {
+        "speed_improvement": 0.06856425539157118,
+        "entity_reduction": -2,
+        "reduction_percentage": 0
+      }
+    },
+    {
+      "filing": {
+        "accession": "0001193125-25-143681",
+        "type": "8-K",
+        "company": "guardanthealth.com"
+      },
+      "section_used": "Item 5.07",
+      "text_sample": "Item 5.07.   Submission of Matters to a Vote of Security Holders.\n-----------------------------------------------------------------\n The annual meeting of stockholders (the \u201cAnnual Meeting\u201d) of Guardant Health, Inc. (the \u201cCompany\u201d) was held on June 18, 2025. \n All of the nominees for director listed in Proposal 1 in the Company\u2019s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201cProxy Statement\u201d), were elected to serve on the...",
+      "current_system": {
+        "entity_count": 0,
+        "unique_entities": 0,
+        "time_seconds": 0.27981019020080566,
+        "sample_entities": []
+      },
+      "gliner_system": {
+        "raw_entity_count": 9,
+        "normalized_group_count": 9,
+        "time_seconds": 7.481342792510986,
+        "sample_raw": [
+          {
+            "start": 194,
+            "end": 215,
+            "text": "Guardant Health, Inc.",
+            "label": "Private Company",
+            "score": 0.8021488785743713
+          },
+          {
+            "start": 244,
+            "end": 257,
+            "text": "June 18, 2025",
+            "label": "Date",
+            "score": 0.8821462392807007
+          },
+          {
+            "start": 394,
+            "end": 428,
+            "text": "Securities and Exchange Commission",
+            "label": "Government Agency",
+            "score": 0.792388379573822
+          },
+          {
+            "start": 432,
+            "end": 446,
+            "text": "April 29, 2025",
+            "label": "Date",
+            "score": 0.8616117238998413
+          },
+          {
+            "start": 713,
+            "end": 725,
+            "text": "Vijaya Gadde",
+            "label": "Person",
+            "score": 0.9343358278274536
+          },
+          {
+            "start": 791,
+            "end": 806,
+            "text": "Roberto Mignone",
+            "label": "Person",
+            "score": 0.9253907799720764
+          },
+          {
+            "start": 869,
+            "end": 882,
+            "text": "Myrtle Potter",
+            "label": "Person",
+            "score": 0.90310138463974
+          },
+          {
+            "start": 947,
+            "end": 957,
+            "text": "Musa Tariq",
+            "label": "Person",
+            "score": 0.9072969555854797
+          },
+          {
+            "start": 1099,
+            "end": 1120,
+            "text": "Deloitte & Touche LLP",
+            "label": "Filing Company",
+            "score": 0.7295653223991394
+          }
+        ],
+        "sample_normalized": [
+          {
+            "entity_id": "E001",
+            "canonical_name": "Guardant Health, Inc.",
+            "label": "Private Company",
+            "mentions": [
+              {
+                "start": 194,
+                "end": 215,
+                "text": "Guardant Health, Inc.",
+                "label": "Private Company",
+                "score": 0.8021488785743713
+              }
+            ],
+            "confidence": 0.8021488785743713
+          },
+          {
+            "entity_id": "E002",
+            "canonical_name": "June 18, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 244,
+                "end": 257,
+                "text": "June 18, 2025",
+                "label": "Date",
+                "score": 0.8821462392807007
+              }
+            ],
+            "confidence": 0.8821462392807007
+          },
+          {
+            "entity_id": "E003",
+            "canonical_name": "April 29, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 432,
+                "end": 446,
+                "text": "April 29, 2025",
+                "label": "Date",
+                "score": 0.8616117238998413
+              }
+            ],
+            "confidence": 0.8616117238998413
+          },
+          {
+            "entity_id": "E004",
+            "canonical_name": "Securities and Exchange Commission",
+            "label": "Government Agency",
+            "mentions": [
+              {
+                "start": 394,
+                "end": 428,
+                "text": "Securities and Exchange Commission",
+                "label": "Government Agency",
+                "score": 0.792388379573822
+              }
+            ],
+            "confidence": 0.792388379573822
+          },
+          {
+            "entity_id": "E005",
+            "canonical_name": "Vijaya Gadde",
+            "label": "Person",
+            "mentions": [
+              {
+                "start": 713,
+                "end": 725,
+                "text": "Vijaya Gadde",
+                "label": "Person",
+                "score": 0.9343358278274536
+              }
+            ],
+            "confidence": 0.9343358278274536
+          }
+        ]
+      },
+      "normalization_analysis": {
+        "current_duplicates": {},
+        "current_duplicate_count": 0,
+        "gliner_groups": [],
+        "groups_formed": 0,
+        "filing_company_analysis": {
+          "company_name": "guardanthealth.com",
+          "current_variations": [],
+          "current_variation_count": 0,
+          "gliner_canonical": "Deloitte & Touche LLP",
+          "gliner_mentions": [
+            "Deloitte & Touche LLP"
+          ]
+        }
+      },
+      "performance": {
+        "speed_improvement": 0.03740106528481795,
+        "entity_reduction": -9,
+        "reduction_percentage": 0
+      }
+    },
+    {
+      "filing": {
+        "accession": "0001124140-25-000046",
+        "type": "8-K",
+        "company": "exactsciences.com"
+      },
+      "section_used": "Item 5.02",
+      "text_sample": "Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.\nOn June 12, 2025, the shareholders of Exact Sciences Corporation (the \u201cCompany\u201d) approved the adoption of the Company\u2019s 2025 Omnibus Long-Term Incentive Plan (the \u201c2025 Omnibus Plan\u201d) at the 2025 Annual Meeting of Shareholders of the Company (the \u201c2025 Annual Meeting\u201d). A description of the terms and conditions of the 202...",
+      "current_system": {
+        "entity_count": 0,
+        "unique_entities": 0,
+        "time_seconds": 0.2935354709625244,
+        "sample_entities": []
+      },
+      "gliner_system": {
+        "raw_entity_count": 4,
+        "normalized_group_count": 4,
+        "time_seconds": 5.213201522827148,
+        "sample_raw": [
+          {
+            "start": 180,
+            "end": 193,
+            "text": "June 12, 2025",
+            "label": "Date",
+            "score": 0.9122895002365112
+          },
+          {
+            "start": 646,
+            "end": 660,
+            "text": "April 29, 2025",
+            "label": "Date",
+            "score": 0.8541631102561951
+          },
+          {
+            "start": 1047,
+            "end": 1060,
+            "text": "July 31, 2024",
+            "label": "Date",
+            "score": 0.8234630227088928
+          },
+          {
+            "start": 1342,
+            "end": 1355,
+            "text": "July 31, 2024",
+            "label": "Date",
+            "score": 0.7252110838890076
+          }
+        ],
+        "sample_normalized": [
+          {
+            "entity_id": "E001",
+            "canonical_name": "June 12, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 180,
+                "end": 193,
+                "text": "June 12, 2025",
+                "label": "Date",
+                "score": 0.9122895002365112
+              }
+            ],
+            "confidence": 0.9122895002365112
+          },
+          {
+            "entity_id": "E002",
+            "canonical_name": "April 29, 2025",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 646,
+                "end": 660,
+                "text": "April 29, 2025",
+                "label": "Date",
+                "score": 0.8541631102561951
+              }
+            ],
+            "confidence": 0.8541631102561951
+          },
+          {
+            "entity_id": "E003",
+            "canonical_name": "July 31, 2024",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 1047,
+                "end": 1060,
+                "text": "July 31, 2024",
+                "label": "Date",
+                "score": 0.8234630227088928
+              }
+            ],
+            "confidence": 0.8234630227088928
+          },
+          {
+            "entity_id": "E004",
+            "canonical_name": "July 31, 2024",
+            "label": "Date",
+            "mentions": [
+              {
+                "start": 1342,
+                "end": 1355,
+                "text": "July 31, 2024",
+                "label": "Date",
+                "score": 0.7252110838890076
+              }
+            ],
+            "confidence": 0.7252110838890076
+          }
+        ]
+      },
+      "normalization_analysis": {
+        "current_duplicates": {},
+        "current_duplicate_count": 0,
+        "gliner_groups": [],
+        "groups_formed": 0,
+        "filing_company_analysis": {
+          "company_name": "exactsciences.com",
+          "current_variations": [],
+          "current_variation_count": 0,
+          "gliner_canonical": null,
+          "gliner_mentions": []
+        }
+      },
+      "performance": {
+        "speed_improvement": 0.056306181465883266,
+        "entity_reduction": -4,
+        "reduction_percentage": 0
+      }
+    }
+  ],
+  "aggregate_metrics": {
+    "test_count": 5,
+    "average_speed_improvement": 0.05225653196529788,
+    "average_entity_reduction": -4.0,
+    "average_reduction_percentage": 0.0,
+    "total_current_entities": 0,
+    "total_gliner_groups": 20,
+    "total_groups_formed": 0,
+    "average_current_time": 0.2854511260986328,
+    "average_gliner_time": 5.707999753952026,
+    "filing_company_normalization_success": 2
+  },
+  "errors": []
+}
