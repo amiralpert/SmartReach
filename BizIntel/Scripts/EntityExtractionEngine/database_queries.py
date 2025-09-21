@@ -31,9 +31,9 @@ def get_unprocessed_filings(get_db_connection_func, limit: int = 5) -> List[Dict
                 sf.title
             FROM raw_data.sec_filings sf
             LEFT JOIN system_uno.sec_entities_raw ser
-                ON ser.sec_filing_ref = CONCAT('SEC_', sf.id)
+                ON ser.accession_number = sf.accession_number
             WHERE sf.accession_number IS NOT NULL  -- Must have accession
-                AND ser.sec_filing_ref IS NULL     -- Not yet processed
+                AND ser.accession_number IS NULL   -- Not yet processed
                 {exclusion_clause}                 -- Skip problematic filings
             ORDER BY sf.filing_date DESC
             LIMIT %s
