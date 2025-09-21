@@ -593,8 +593,8 @@ class GLiNERTestRunner:
             # Git commands to add and commit the test results (no error suppression)
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
             commands = [
-                f"cd {repo_path} && git config user.email 'kaggle-runner@smartreach.ai'",
-                f"cd {repo_path} && git config user.name 'SmartReach Kaggle Runner'",
+                f"cd {repo_path} && git config user.email 'noreply@github.com'",
+                f"cd {repo_path} && git config user.name 'Automated Test Runner'",
                 f"cd {repo_path} && git add test_results/gliner_test_results.json test_results/gliner_test_report.md test_results/gliner_comparison.csv",
                 f"cd {repo_path} && git commit -m 'GLiNER test results - {timestamp}\n\nAutomatically committed by GLiNER test runner\nTest results saved for analysis and comparison'",
                 f"cd {repo_path} && git push origin main"
