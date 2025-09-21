@@ -1,6 +1,6 @@
 # GLiNER Test Report
 
-**Generated**: 2025-09-21T01:39:14.051085
+**Generated**: 2025-09-21T01:54:09.410557
 **Test Name**: iteration_1_baseline
 
 ## Configuration
@@ -16,8 +16,8 @@
 - **Speed Improvement**: 0.05x faster
 - **Entity Reduction**: 0.0%
 - **Groups Formed**: 0 total
-- **Avg Time (Current)**: 0.285s
-- **Avg Time (GLiNER)**: 5.708s
+- **Avg Time (Current)**: 0.299s
+- **Avg Time (GLiNER)**: 5.802s
 
 ## Test Case Details
 
@@ -71,7 +71,7 @@
 **Results**:
 - Current System: 0 entities (0 unique)
 - GLiNER: 9 raw → 9 groups
-- Speed: 0.04x faster
+- Speed: 0.05x faster
 - Reduction: 0.0%
 
 **Filing Company Normalization**:
@@ -88,6 +88,6 @@
 **Results**:
 - Current System: 0 entities (0 unique)
 - GLiNER: 4 raw → 4 groups
-- Speed: 0.06x faster
+- Speed: 0.05x faster
 - Reduction: 0.0%
 
