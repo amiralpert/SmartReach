@@ -1,0 +1,87 @@
+{
+  "filing": {
+    "accession": "0001124140-25-000083",
+    "type": "10-Q",
+    "company": "exactsciences.com"
+  },
+  "section_used": "Item 2",
+  "text_sample": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nObjective\nThe purpose of this Management\u2019s Discussion and Analysis is to better allow our investors to understand and view our Company from management\u2019s perspective. We are providing an overview of our business and strategy including a discussion of our financial condition and results of operations. The following discussion of our financial condition and results of operations should be read in conjuncti...",
+  "full_text": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nObjective\nThe purpose of this Management\u2019s Discussion and Analysis is to better allow our investors to understand and view our Company from management\u2019s perspective. We are providing an overview of our business and strategy including a discussion of our financial condition and results of operations. The following discussion of our financial condition and results of operations should be read in conjunction with the condensed consolidated financial statements and the related notes thereto included elsewhere in this Quarterly Report on Form 10-Q and the audited financial statements and notes thereto and Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations included in our Annual Report on Form 10-K for the year ended December 31, 2024 (the \u201c2024 Form 10-K\u201d), which has been filed with the U.S. Securities and Exchange Commission (\u201cSEC\u201d).\nForward-Looking Statements\nThis Quarterly Report on Form 10-Q contains forward-looking statements within the meaning of Section 27A of the Securities Act of 1933, as amended, and Section 21E of the Securities Exchange Act of 1934, as amended, that are intended to be covered by the \u201csafe harbor\u201d created by those sections. Forward-looking statements, which are based on certain assumptions and describe our future plans, strategies and expectations, can generally be identified by the use of forward-looking terms such as \u201cbelieve,\u201d \u201cexpect,\u201d \u201cmay,\u201d \u201cwill,\u201d \u201cshould,\u201d \u201cwould,\u201d \u201ccould,\u201d \u201cseek,\u201d \u201cintend,\u201d \u201cplan,\u201d \u201cgoal,\u201d \u201cproject,\u201d \u201cestimate,\u201d \u201canticipate\u201d or other comparable terms. All statements other than statements of historical facts included in this Quarterly Report on Form 10-Q regarding our strategies, prospects, expectations, financial condition, operations, costs, plans and objectives are forward-looking statements. Examples of forward-looking statements include, among others, statements we make regarding expected future operating results,including the anticipated impacts of restructuring and cost reduction initiatives; expectations for development or launching of new or improved products and services and their adoption and impact on patients; insurance reimbursement potential; our strategies, clinical trials, commercialization efforts, positioning, competition, resources, capabilities and expectations for future events or performance; and the anticipated benefits of our acquisitions and collaborative and licensing arrangements, including estimated synergies and other financial impacts. Forward-looking statements are neither historical facts nor assurances of future performance or events. Instead, they are based only on current beliefs, expectations, and assumptions regarding the future of our business, future plans and strategies, projections, anticipated events and trends, the economy, and other future conditions. Because forward-looking statements relate to the future, they are subject to inherent uncertainties, risks and changes in circumstances that are difficult to predict and many of which are outside of our control. Actual results, conditions, and events may differ materially from those indicated in the forward-looking statements. Therefore, you should not rely on any of these forward-looking statements. Important factors that could cause actual results, conditions, and events to differ materially from those indicated in the forward-looking statements include, among others, the following: our ability to successfully develop and commercialize new products and services and assess potential market opportunities; our ability to successfully and profitably market our products and services; the acceptance of our products and services by patients and healthcare providers; our reliance upon certain suppliers; our ability to retain and hire key personnel; approval and maintenance of adequate reimbursement rates for our products and services within and outside of the U.S.; the amount and nature of competition for our products and services; the effects of any judicial, executive or legislative action affecting us or the healthcare system; changes in government policies, laws, regulations, and staffing; recommendations, guidelines and quality metrics issued by various organizations regarding cancer screening or our products and services; our ability to obtain and maintain regulatory approvals and comply with applicable regulations; our ability to protect and enforce our intellectual property; our success establishing and maintaining collaborative, licensing and supplier arrangements; the results of our validation studies and clinical trials, including the risks that the results of future studies and trials may differ materially from the results of previously completed studies and trials; our ability to manage an international business and our expectations regarding our international expansion and opportunities; the potential effects of changing macroeconomic",
+  "current_system": {
+    "entity_count": 0,
+    "unique_entities": 0,
+    "time_seconds": 0.2756335735321045,
+    "sample_entities": []
+  },
+  "gliner_system": {
+    "raw_entity_count": 2,
+    "normalized_group_count": 2,
+    "time_seconds": 6.684479236602783,
+    "sample_raw": [
+      {
+        "start": 850,
+        "end": 867,
+        "text": "December 31, 2024",
+        "label": "Date",
+        "score": 0.9068764448165894
+      },
+      {
+        "start": 922,
+        "end": 961,
+        "text": "U.S. Securities and Exchange Commission",
+        "label": "Government Agency",
+        "score": 0.7060485482215881
+      }
+    ],
+    "sample_normalized": [
+      {
+        "entity_id": "E001",
+        "canonical_name": "December 31, 2024",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 850,
+            "end": 867,
+            "text": "December 31, 2024",
+            "label": "Date",
+            "score": 0.9068764448165894
+          }
+        ],
+        "confidence": 0.9068764448165894
+      },
+      {
+        "entity_id": "E002",
+        "canonical_name": "U.S. Securities and Exchange Commission",
+        "label": "Government Agency",
+        "mentions": [
+          {
+            "start": 922,
+            "end": 961,
+            "text": "U.S. Securities and Exchange Commission",
+            "label": "Government Agency",
+            "score": 0.7060485482215881
+          }
+        ],
+        "confidence": 0.7060485482215881
+      }
+    ]
+  },
+  "normalization_analysis": {
+    "current_duplicates": {},
+    "current_duplicate_count": 0,
+    "gliner_groups": [],
+    "groups_formed": 0,
+    "filing_company_analysis": {
+      "company_name": "exactsciences.com",
+      "current_variations": [],
+      "current_variation_count": 0,
+      "gliner_canonical": null,
+      "gliner_mentions": []
+    }
+  },
+  "performance": {
+    "speed_improvement": 0.041234861202469414,
+    "entity_reduction": -2,
+    "reduction_percentage": 0
+  }
+}

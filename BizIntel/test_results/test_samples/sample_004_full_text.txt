@@ -1,0 +1,37 @@
+Full Text Analysis for GLiNER Test Case 4
+============================================================
+
+Filing: 0001193125-25-143681
+Company: guardanthealth.com
+Type: 8-K
+Section: Item 5.07
+Text Length: 1,654 characters
+
+FULL TEXT CONTENT:
+----------------------------------------
+
+Item 5.07.   Submission of Matters to a Vote of Security Holders.
+-----------------------------------------------------------------
+ The annual meeting of stockholders (the “Annual Meeting”) of Guardant Health, Inc. (the “Company”) was held on June 18, 2025. 
+ All of the nominees for director listed in Proposal 1 in the Company’s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the “Proxy Statement”), were elected to serve on the Company’s board of directors by the following vote: 
+ 
+
+Name of Nominee   Votes For           Votes Withheld         Broker          
+                                                             Non-Votes       
+Vijaya Gadde             95,987,234              2,587,247          7,173,583
+Roberto Mignone          97,399,756              1,174,725          7,173,583
+Myrtle Potter            96,724,614              1,849,867          7,173,583
+Musa Tariq               70,290,715             28,283,766          7,173,583
+ Proposal 2 in the Proxy Statement, a proposal to ratify the selection of Deloitte & Touche LLP as the Company’s independent registered public accounting firm for the year ending December 31, 2025, was approved by the following vote: 
+ 
+
+Votes For     Votes Against   Abstentions
+105,585,947   24,506          137,611    
+ Proposal 3 in the Proxy Statement, a proposal to approve, on an advisory (non-binding) basis, the compensation of the Company’s named executive officers, was approved by the following vote: 
+ 
+
+Votes For    Votes Against   Abstentions   Broker Non-Votes
+91,189,702   7,020,245       364,534       7,173,583
+
+----------------------------------------
+END OF FULL TEXT

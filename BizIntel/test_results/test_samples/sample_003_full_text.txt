@@ -1,0 +1,35 @@
+Full Text Analysis for GLiNER Test Case 3
+============================================================
+
+Filing: 0001576280-25-000246
+Company: guardanthealth.com
+Type: 10-Q
+Section: Item 1
+Text Length: 5,000 characters
+
+FULL TEXT CONTENT:
+----------------------------------------
+
+Item 1. Unaudited Condensed Consolidated Financial Statements
+Guardant Health, Inc.
+Condensed Consolidated Balance Sheets (unaudited)
+(in thousands, except share and per share data)
+
+                                                                                                                                                                                                                                                                                           June 30, 2025                December 31, 2024
+ASSETS                                                                                                                                                                                                                                                                                                                                   
+Current assets:                                                                                                                                                                                                                                                                                                                          
+Cash and cash equivalents                                                                                                                                                                                                                                                                $629,143                        $525,540        
+Short-term marketable debt securities                                                                                                                                                                                                                                                           —                         314,438        
+Accounts receivable, net                                                                                                                                                                                                                                                                  130,252                         110,253        
+Inventory, net                                                                                                                                                                                                                                                                             84,061                          71,083        
+Prepaid expenses and other current assets, net                                                                                                                                                                                                                                             39,976                          33,800        
+Total current assets                                                                                                                                                                                                                                                                      883,432                       1,055,114        
+Restricted cash                                                                                                                                                                                                                                                                           106,337                         104,215        
+Property and equipment, net                                                                                                                                                                                                                                                               126,141                         136,813        
+Right-of-use assets, net                                                                                                                                                                                                                                                                  169,768                         142,265        
+Intangible assets, net                                                                                                                                                                                                                                                                      5,864                           6,760        
+Goodwill                                                                                                                                                                                                                                                                                    3,290                           3,290        
+Other assets, net                                                                                                                                                                                    
+
+----------------------------------------
+END OF FULL TEXT

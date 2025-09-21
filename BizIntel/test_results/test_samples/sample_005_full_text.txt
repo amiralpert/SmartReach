@@ -1,0 +1,19 @@
+Full Text Analysis for GLiNER Test Case 5
+============================================================
+
+Filing: 0001124140-25-000046
+Company: exactsciences.com
+Type: 8-K
+Section: Item 5.02
+Text Length: 1,786 characters
+
+FULL TEXT CONTENT:
+----------------------------------------
+
+Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.
+On June 12, 2025, the shareholders of Exact Sciences Corporation (the “Company”) approved the adoption of the Company’s 2025 Omnibus Long-Term Incentive Plan (the “2025 Omnibus Plan”) at the 2025 Annual Meeting of Shareholders of the Company (the “2025 Annual Meeting”). A description of the terms and conditions of the 2025 Omnibus Plan is set forth in the Company’s Proxy Statement for the 2025 Annual Meeting, as filed with the Securities and Exchange Commission on April 29, 2025 (the “2025 Proxy Statement”) under the heading “Proposal 4 – Approval of the 2025 Omnibus Long-Term Incentive Plan,” which such description is incorporated by reference herein.
+Additionally, at the 2025 Annual Meeting, the Company’s shareholders approved an amendment (the “Amendment”) to the Company’s Amended and Restated 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024) (the “Stock Purchase Plan”). A description of the terms and conditions of the Stock Purchase Plan, as amended by the Amendment, is set forth in the 2025 Proxy Statement under the heading “Proposal 5 – Amendment to the 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024)”, which such description is incorporated by reference herein. 
+These summaries of the 2025 Omnibus Plan and the Amendment do not purport to be complete and are subject to, and qualified in their entirety by, the full text of the 2025 Omnibus Plan and the Amendment, copies of which are filed as Exhibit 10.1 and Exhibit 10.2, respectively, to this Current Report on Form 8-K and are incorporated by reference into this Item 5.02.
+
+----------------------------------------
+END OF FULL TEXT

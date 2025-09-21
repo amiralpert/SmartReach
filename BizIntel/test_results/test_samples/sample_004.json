@@ -1,0 +1,183 @@
+{
+  "filing": {
+    "accession": "0001193125-25-143681",
+    "type": "8-K",
+    "company": "guardanthealth.com"
+  },
+  "section_used": "Item 5.07",
+  "text_sample": "Item 5.07.   Submission of Matters to a Vote of Security Holders.\n-----------------------------------------------------------------\n The annual meeting of stockholders (the \u201cAnnual Meeting\u201d) of Guardant Health, Inc. (the \u201cCompany\u201d) was held on June 18, 2025. \n All of the nominees for director listed in Proposal 1 in the Company\u2019s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201cProxy Statement\u201d), were elected to serve on the...",
+  "full_text": "Item 5.07.   Submission of Matters to a Vote of Security Holders.\n-----------------------------------------------------------------\n The annual meeting of stockholders (the \u201cAnnual Meeting\u201d) of Guardant Health, Inc. (the \u201cCompany\u201d) was held on June 18, 2025. \n All of the nominees for director listed in Proposal 1 in the Company\u2019s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201cProxy Statement\u201d), were elected to serve on the Company\u2019s board of directors by the following vote: \n \n\nName of Nominee   Votes For           Votes Withheld         Broker          \n                                                             Non-Votes       \nVijaya Gadde             95,987,234              2,587,247          7,173,583\nRoberto Mignone          97,399,756              1,174,725          7,173,583\nMyrtle Potter            96,724,614              1,849,867          7,173,583\nMusa Tariq               70,290,715             28,283,766          7,173,583\n Proposal 2 in the Proxy Statement, a proposal to ratify the selection of Deloitte & Touche LLP as the Company\u2019s independent registered public accounting firm for the year ending December 31, 2025, was approved by the following vote: \n \n\nVotes For     Votes Against   Abstentions\n105,585,947   24,506          137,611    \n Proposal 3 in the Proxy Statement, a proposal to approve, on an advisory (non-binding) basis, the compensation of the Company\u2019s named executive officers, was approved by the following vote: \n \n\nVotes For    Votes Against   Abstentions   Broker Non-Votes\n91,189,702   7,020,245       364,534       7,173,583",
+  "current_system": {
+    "entity_count": 0,
+    "unique_entities": 0,
+    "time_seconds": 0.3120839595794678,
+    "sample_entities": []
+  },
+  "gliner_system": {
+    "raw_entity_count": 9,
+    "normalized_group_count": 9,
+    "time_seconds": 7.53759765625,
+    "sample_raw": [
+      {
+        "start": 194,
+        "end": 215,
+        "text": "Guardant Health, Inc.",
+        "label": "Private Company",
+        "score": 0.8021488785743713
+      },
+      {
+        "start": 244,
+        "end": 257,
+        "text": "June 18, 2025",
+        "label": "Date",
+        "score": 0.8821462392807007
+      },
+      {
+        "start": 394,
+        "end": 428,
+        "text": "Securities and Exchange Commission",
+        "label": "Government Agency",
+        "score": 0.792388379573822
+      },
+      {
+        "start": 432,
+        "end": 446,
+        "text": "April 29, 2025",
+        "label": "Date",
+        "score": 0.8616117238998413
+      },
+      {
+        "start": 713,
+        "end": 725,
+        "text": "Vijaya Gadde",
+        "label": "Person",
+        "score": 0.9343358278274536
+      },
+      {
+        "start": 791,
+        "end": 806,
+        "text": "Roberto Mignone",
+        "label": "Person",
+        "score": 0.9253907799720764
+      },
+      {
+        "start": 869,
+        "end": 882,
+        "text": "Myrtle Potter",
+        "label": "Person",
+        "score": 0.90310138463974
+      },
+      {
+        "start": 947,
+        "end": 957,
+        "text": "Musa Tariq",
+        "label": "Person",
+        "score": 0.9072969555854797
+      },
+      {
+        "start": 1099,
+        "end": 1120,
+        "text": "Deloitte & Touche LLP",
+        "label": "Filing Company",
+        "score": 0.7295653223991394
+      }
+    ],
+    "sample_normalized": [
+      {
+        "entity_id": "E001",
+        "canonical_name": "Guardant Health, Inc.",
+        "label": "Private Company",
+        "mentions": [
+          {
+            "start": 194,
+            "end": 215,
+            "text": "Guardant Health, Inc.",
+            "label": "Private Company",
+            "score": 0.8021488785743713
+          }
+        ],
+        "confidence": 0.8021488785743713
+      },
+      {
+        "entity_id": "E002",
+        "canonical_name": "June 18, 2025",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 244,
+            "end": 257,
+            "text": "June 18, 2025",
+            "label": "Date",
+            "score": 0.8821462392807007
+          }
+        ],
+        "confidence": 0.8821462392807007
+      },
+      {
+        "entity_id": "E003",
+        "canonical_name": "April 29, 2025",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 432,
+            "end": 446,
+            "text": "April 29, 2025",
+            "label": "Date",
+            "score": 0.8616117238998413
+          }
+        ],
+        "confidence": 0.8616117238998413
+      },
+      {
+        "entity_id": "E004",
+        "canonical_name": "Securities and Exchange Commission",
+        "label": "Government Agency",
+        "mentions": [
+          {
+            "start": 394,
+            "end": 428,
+            "text": "Securities and Exchange Commission",
+            "label": "Government Agency",
+            "score": 0.792388379573822
+          }
+        ],
+        "confidence": 0.792388379573822
+      },
+      {
+        "entity_id": "E005",
+        "canonical_name": "Vijaya Gadde",
+        "label": "Person",
+        "mentions": [
+          {
+            "start": 713,
+            "end": 725,
+            "text": "Vijaya Gadde",
+            "label": "Person",
+            "score": 0.9343358278274536
+          }
+        ],
+        "confidence": 0.9343358278274536
+      }
+    ]
+  },
+  "normalization_analysis": {
+    "current_duplicates": {},
+    "current_duplicate_count": 0,
+    "gliner_groups": [],
+    "groups_formed": 0,
+    "filing_company_analysis": {
+      "company_name": "guardanthealth.com",
+      "current_variations": [],
+      "current_variation_count": 0,
+      "gliner_canonical": "Deloitte & Touche LLP",
+      "gliner_mentions": [
+        "Deloitte & Touche LLP"
+      ]
+    }
+  },
+  "performance": {
+    "speed_improvement": 0.04140363731416402,
+    "entity_reduction": -9,
+    "reduction_percentage": 0
+  }
+}

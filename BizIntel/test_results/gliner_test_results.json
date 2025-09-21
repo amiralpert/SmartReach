@@ -1,6 +1,6 @@
 {
   "test_metadata": {
-    "timestamp": "2025-09-21T02:07:58.502094",
+    "timestamp": "2025-09-21T02:17:47.376720",
     "test_name": "iteration_1_baseline",
     "config": {
       "test_name": "iteration_1_baseline",
@@ -62,16 +62,17 @@
       },
       "section_used": "Item 2",
       "text_sample": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nObjective\nThe purpose of this Management\u2019s Discussion and Analysis is to better allow our investors to understand and view our Company from management\u2019s perspective. We are providing an overview of our business and strategy including a discussion of our financial condition and results of operations. The following discussion of our financial condition and results of operations should be read in conjuncti...",
+      "full_text": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nObjective\nThe purpose of this Management\u2019s Discussion and Analysis is to better allow our investors to understand and view our Company from management\u2019s perspective. We are providing an overview of our business and strategy including a discussion of our financial condition and results of operations. The following discussion of our financial condition and results of operations should be read in conjunction with the condensed consolidated financial statements and the related notes thereto included elsewhere in this Quarterly Report on Form 10-Q and the audited financial statements and notes thereto and Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations included in our Annual Report on Form 10-K for the year ended December 31, 2024 (the \u201c2024 Form 10-K\u201d), which has been filed with the U.S. Securities and Exchange Commission (\u201cSEC\u201d).\nForward-Looking Statements\nThis Quarterly Report on Form 10-Q contains forward-looking statements within the meaning of Section 27A of the Securities Act of 1933, as amended, and Section 21E of the Securities Exchange Act of 1934, as amended, that are intended to be covered by the \u201csafe harbor\u201d created by those sections. Forward-looking statements, which are based on certain assumptions and describe our future plans, strategies and expectations, can generally be identified by the use of forward-looking terms such as \u201cbelieve,\u201d \u201cexpect,\u201d \u201cmay,\u201d \u201cwill,\u201d \u201cshould,\u201d \u201cwould,\u201d \u201ccould,\u201d \u201cseek,\u201d \u201cintend,\u201d \u201cplan,\u201d \u201cgoal,\u201d \u201cproject,\u201d \u201cestimate,\u201d \u201canticipate\u201d or other comparable terms. All statements other than statements of historical facts included in this Quarterly Report on Form 10-Q regarding our strategies, prospects, expectations, financial condition, operations, costs, plans and objectives are forward-looking statements. Examples of forward-looking statements include, among others, statements we make regarding expected future operating results,including the anticipated impacts of restructuring and cost reduction initiatives; expectations for development or launching of new or improved products and services and their adoption and impact on patients; insurance reimbursement potential; our strategies, clinical trials, commercialization efforts, positioning, competition, resources, capabilities and expectations for future events or performance; and the anticipated benefits of our acquisitions and collaborative and licensing arrangements, including estimated synergies and other financial impacts. Forward-looking statements are neither historical facts nor assurances of future performance or events. Instead, they are based only on current beliefs, expectations, and assumptions regarding the future of our business, future plans and strategies, projections, anticipated events and trends, the economy, and other future conditions. Because forward-looking statements relate to the future, they are subject to inherent uncertainties, risks and changes in circumstances that are difficult to predict and many of which are outside of our control. Actual results, conditions, and events may differ materially from those indicated in the forward-looking statements. Therefore, you should not rely on any of these forward-looking statements. Important factors that could cause actual results, conditions, and events to differ materially from those indicated in the forward-looking statements include, among others, the following: our ability to successfully develop and commercialize new products and services and assess potential market opportunities; our ability to successfully and profitably market our products and services; the acceptance of our products and services by patients and healthcare providers; our reliance upon certain suppliers; our ability to retain and hire key personnel; approval and maintenance of adequate reimbursement rates for our products and services within and outside of the U.S.; the amount and nature of competition for our products and services; the effects of any judicial, executive or legislative action affecting us or the healthcare system; changes in government policies, laws, regulations, and staffing; recommendations, guidelines and quality metrics issued by various organizations regarding cancer screening or our products and services; our ability to obtain and maintain regulatory approvals and comply with applicable regulations; our ability to protect and enforce our intellectual property; our success establishing and maintaining collaborative, licensing and supplier arrangements; the results of our validation studies and clinical trials, including the risks that the results of future studies and trials may differ materially from the results of previously completed studies and trials; our ability to manage an international business and our expectations regarding our international expansion and opportunities; the potential effects of changing macroeconomic",
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.2818026542663574,
+        "time_seconds": 0.2756335735321045,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 2,
         "normalized_group_count": 2,
-        "time_seconds": 6.607255935668945,
+        "time_seconds": 6.684479236602783,
         "sample_raw": [
           {
             "start": 850,
@@ -135,7 +136,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.04265048259218471,
+        "speed_improvement": 0.041234861202469414,
         "entity_reduction": -2,
         "reduction_percentage": 0
       }
@@ -148,16 +149,17 @@
       },
       "section_used": "Item 2.02",
       "text_sample": "Item 2.02 Results of Operations and Financial Condition. \nOn July 30, 2025, Guardant Health, Inc. (the \u201cCompany\u201d) issued a press release announcing financial results for the fiscal quarter ended June 30, 2025. The full text of the press release is furnished as Exhibit 99.1 to this Current Report on Form 8-K and is incorporated herein by reference.\nThe information furnished in this Current Report on Form 8-K (including Exhibit 99.1) shall not be deemed \u201cfiled\u201d for purposes of Section 18 of the Se...",
+      "full_text": "Item 2.02 Results of Operations and Financial Condition. \nOn July 30, 2025, Guardant Health, Inc. (the \u201cCompany\u201d) issued a press release announcing financial results for the fiscal quarter ended June 30, 2025. The full text of the press release is furnished as Exhibit 99.1 to this Current Report on Form 8-K and is incorporated herein by reference.\nThe information furnished in this Current Report on Form 8-K (including Exhibit 99.1) shall not be deemed \u201cfiled\u201d for purposes of Section 18 of the Securities Exchange Act of 1934, as amended (the \u201cExchange Act\u201d), or otherwise subject to the liabilities of that Section, nor shall it be deemed to be incorporated by reference into any filing of the Company under the Securities Act of 1933, as amended, or the Exchange Act, except as expressly set forth by specific reference in such filing.",
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.27692461013793945,
+        "time_seconds": 0.27276182174682617,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 3,
         "normalized_group_count": 3,
-        "time_seconds": 4.957803010940552,
+        "time_seconds": 4.913926601409912,
         "sample_raw": [
           {
             "start": 61,
@@ -245,7 +247,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.05585631569605338,
+        "speed_improvement": 0.055507915333648836,
         "entity_reduction": -3,
         "reduction_percentage": 0
       }
@@ -258,16 +260,17 @@
       },
       "section_used": "Item 1",
       "text_sample": "Item 1. Unaudited Condensed Consolidated Financial Statements\nGuardant Health, Inc.\nCondensed Consolidated Balance Sheets (unaudited)\n(in thousands, except share and per share data)\n\n                                                                                                                                                                                                                                                                                           June 30, 2025                Decem...",
+      "full_text": "Item 1. Unaudited Condensed Consolidated Financial Statements\nGuardant Health, Inc.\nCondensed Consolidated Balance Sheets (unaudited)\n(in thousands, except share and per share data)\n\n                                                                                                                                                                                                                                                                                           June 30, 2025                December 31, 2024\nASSETS                                                                                                                                                                                                                                                                                                                                   \nCurrent assets:                                                                                                                                                                                                                                                                                                                          \nCash and cash equivalents                                                                                                                                                                                                                                                                $629,143                        $525,540        \nShort-term marketable debt securities                                                                                                                                                                                                                                                           \u2014                         314,438        \nAccounts receivable, net                                                                                                                                                                                                                                                                  130,252                         110,253        \nInventory, net                                                                                                                                                                                                                                                                             84,061                          71,083        \nPrepaid expenses and other current assets, net                                                                                                                                                                                                                                             39,976                          33,800        \nTotal current assets                                                                                                                                                                                                                                                                      883,432                       1,055,114        \nRestricted cash                                                                                                                                                                                                                                                                           106,337                         104,215        \nProperty and equipment, net                                                                                                                                                                                                                                                               126,141                         136,813        \nRight-of-use assets, net                                                                                                                                                                                                                                                                  169,768                         142,265        \nIntangible assets, net                                                                                                                                                                                                                                                                      5,864                           6,760        \nGoodwill                                                                                                                                                                                                                                                                                    3,290                           3,290        \nOther assets, net                                                                                                                                                                                    ",
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.27976346015930176,
+        "time_seconds": 0.2913823127746582,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 2,
         "normalized_group_count": 2,
-        "time_seconds": 4.318204164505005,
+        "time_seconds": 4.36859917640686,
         "sample_raw": [
           {
             "start": 466,
@@ -331,7 +334,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.06478699234716963,
+        "speed_improvement": 0.06669925552985109,
         "entity_reduction": -2,
         "reduction_percentage": 0
       }
@@ -344,16 +347,17 @@
       },
       "section_used": "Item 5.07",
       "text_sample": "Item 5.07.   Submission of Matters to a Vote of Security Holders.\n-----------------------------------------------------------------\n The annual meeting of stockholders (the \u201cAnnual Meeting\u201d) of Guardant Health, Inc. (the \u201cCompany\u201d) was held on June 18, 2025. \n All of the nominees for director listed in Proposal 1 in the Company\u2019s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201cProxy Statement\u201d), were elected to serve on the...",
+      "full_text": "Item 5.07.   Submission of Matters to a Vote of Security Holders.\n-----------------------------------------------------------------\n The annual meeting of stockholders (the \u201cAnnual Meeting\u201d) of Guardant Health, Inc. (the \u201cCompany\u201d) was held on June 18, 2025. \n All of the nominees for director listed in Proposal 1 in the Company\u2019s Definitive Proxy Statement on Schedule 14A, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201cProxy Statement\u201d), were elected to serve on the Company\u2019s board of directors by the following vote: \n \n\nName of Nominee   Votes For           Votes Withheld         Broker          \n                                                             Non-Votes       \nVijaya Gadde             95,987,234              2,587,247          7,173,583\nRoberto Mignone          97,399,756              1,174,725          7,173,583\nMyrtle Potter            96,724,614              1,849,867          7,173,583\nMusa Tariq               70,290,715             28,283,766          7,173,583\n Proposal 2 in the Proxy Statement, a proposal to ratify the selection of Deloitte & Touche LLP as the Company\u2019s independent registered public accounting firm for the year ending December 31, 2025, was approved by the following vote: \n \n\nVotes For     Votes Against   Abstentions\n105,585,947   24,506          137,611    \n Proposal 3 in the Proxy Statement, a proposal to approve, on an advisory (non-binding) basis, the compensation of the Company\u2019s named executive officers, was approved by the following vote: \n \n\nVotes For    Votes Against   Abstentions   Broker Non-Votes\n91,189,702   7,020,245       364,534       7,173,583",
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.2811465263366699,
+        "time_seconds": 0.3120839595794678,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 9,
         "normalized_group_count": 9,
-        "time_seconds": 7.624473810195923,
+        "time_seconds": 7.53759765625,
         "sample_raw": [
           {
             "start": 194,
@@ -513,7 +517,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.03687422021972234,
+        "speed_improvement": 0.04140363731416402,
         "entity_reduction": -9,
         "reduction_percentage": 0
       }
@@ -526,16 +530,17 @@
       },
       "section_used": "Item 5.02",
       "text_sample": "Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.\nOn June 12, 2025, the shareholders of Exact Sciences Corporation (the \u201cCompany\u201d) approved the adoption of the Company\u2019s 2025 Omnibus Long-Term Incentive Plan (the \u201c2025 Omnibus Plan\u201d) at the 2025 Annual Meeting of Shareholders of the Company (the \u201c2025 Annual Meeting\u201d). A description of the terms and conditions of the 202...",
+      "full_text": "Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.\nOn June 12, 2025, the shareholders of Exact Sciences Corporation (the \u201cCompany\u201d) approved the adoption of the Company\u2019s 2025 Omnibus Long-Term Incentive Plan (the \u201c2025 Omnibus Plan\u201d) at the 2025 Annual Meeting of Shareholders of the Company (the \u201c2025 Annual Meeting\u201d). A description of the terms and conditions of the 2025 Omnibus Plan is set forth in the Company\u2019s Proxy Statement for the 2025 Annual Meeting, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201c2025 Proxy Statement\u201d) under the heading \u201cProposal 4 \u2013 Approval of the 2025 Omnibus Long-Term Incentive Plan,\u201d which such description is incorporated by reference herein.\nAdditionally, at the 2025 Annual Meeting, the Company\u2019s shareholders approved an amendment (the \u201cAmendment\u201d) to the Company\u2019s Amended and Restated 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024) (the \u201cStock Purchase Plan\u201d). A description of the terms and conditions of the Stock Purchase Plan, as amended by the Amendment, is set forth in the 2025 Proxy Statement under the heading \u201cProposal 5 \u2013 Amendment to the 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024)\u201d, which such description is incorporated by reference herein. \nThese summaries of the 2025 Omnibus Plan and the Amendment do not purport to be complete and are subject to, and qualified in their entirety by, the full text of the 2025 Omnibus Plan and the Amendment, copies of which are filed as Exhibit 10.1 and Exhibit 10.2, respectively, to this Current Report on Form 8-K and are incorporated by reference into this Item 5.02.",
       "current_system": {
         "entity_count": 0,
         "unique_entities": 0,
-        "time_seconds": 0.2812690734863281,
+        "time_seconds": 0.29399585723876953,
         "sample_entities": []
       },
       "gliner_system": {
         "raw_entity_count": 4,
         "normalized_group_count": 4,
-        "time_seconds": 5.268792152404785,
+        "time_seconds": 5.310232162475586,
         "sample_raw": [
           {
             "start": 180,
@@ -643,7 +648,7 @@
         }
       },
       "performance": {
-        "speed_improvement": 0.053383975938005285,
+        "speed_improvement": 0.05536403084525614,
         "entity_reduction": -4,
         "reduction_percentage": 0
       }
@@ -651,14 +656,14 @@
   ],
   "aggregate_metrics": {
     "test_count": 5,
-    "average_speed_improvement": 0.05071039735862707,
+    "average_speed_improvement": 0.05204194004507791,
     "average_entity_reduction": -4.0,
     "average_reduction_percentage": 0.0,
     "total_current_entities": 0,
     "total_gliner_groups": 20,
     "total_groups_formed": 0,
-    "average_current_time": 0.2801812648773193,
-    "average_gliner_time": 5.755305814743042,
+    "average_current_time": 0.2891715049743652,
+    "average_gliner_time": 5.762966966629028,
     "filing_company_normalization_success": 2
   },
   "errors": []

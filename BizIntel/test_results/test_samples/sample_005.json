@@ -1,0 +1,131 @@
+{
+  "filing": {
+    "accession": "0001124140-25-000046",
+    "type": "8-K",
+    "company": "exactsciences.com"
+  },
+  "section_used": "Item 5.02",
+  "text_sample": "Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.\nOn June 12, 2025, the shareholders of Exact Sciences Corporation (the \u201cCompany\u201d) approved the adoption of the Company\u2019s 2025 Omnibus Long-Term Incentive Plan (the \u201c2025 Omnibus Plan\u201d) at the 2025 Annual Meeting of Shareholders of the Company (the \u201c2025 Annual Meeting\u201d). A description of the terms and conditions of the 202...",
+  "full_text": "Item 5.02.                    Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers.\nOn June 12, 2025, the shareholders of Exact Sciences Corporation (the \u201cCompany\u201d) approved the adoption of the Company\u2019s 2025 Omnibus Long-Term Incentive Plan (the \u201c2025 Omnibus Plan\u201d) at the 2025 Annual Meeting of Shareholders of the Company (the \u201c2025 Annual Meeting\u201d). A description of the terms and conditions of the 2025 Omnibus Plan is set forth in the Company\u2019s Proxy Statement for the 2025 Annual Meeting, as filed with the Securities and Exchange Commission on April 29, 2025 (the \u201c2025 Proxy Statement\u201d) under the heading \u201cProposal 4 \u2013 Approval of the 2025 Omnibus Long-Term Incentive Plan,\u201d which such description is incorporated by reference herein.\nAdditionally, at the 2025 Annual Meeting, the Company\u2019s shareholders approved an amendment (the \u201cAmendment\u201d) to the Company\u2019s Amended and Restated 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024) (the \u201cStock Purchase Plan\u201d). A description of the terms and conditions of the Stock Purchase Plan, as amended by the Amendment, is set forth in the 2025 Proxy Statement under the heading \u201cProposal 5 \u2013 Amendment to the 2010 Employee Stock Purchase Plan (as amended and restated on July 31, 2024)\u201d, which such description is incorporated by reference herein. \nThese summaries of the 2025 Omnibus Plan and the Amendment do not purport to be complete and are subject to, and qualified in their entirety by, the full text of the 2025 Omnibus Plan and the Amendment, copies of which are filed as Exhibit 10.1 and Exhibit 10.2, respectively, to this Current Report on Form 8-K and are incorporated by reference into this Item 5.02.",
+  "current_system": {
+    "entity_count": 0,
+    "unique_entities": 0,
+    "time_seconds": 0.29399585723876953,
+    "sample_entities": []
+  },
+  "gliner_system": {
+    "raw_entity_count": 4,
+    "normalized_group_count": 4,
+    "time_seconds": 5.310232162475586,
+    "sample_raw": [
+      {
+        "start": 180,
+        "end": 193,
+        "text": "June 12, 2025",
+        "label": "Date",
+        "score": 0.9122895002365112
+      },
+      {
+        "start": 646,
+        "end": 660,
+        "text": "April 29, 2025",
+        "label": "Date",
+        "score": 0.8541631102561951
+      },
+      {
+        "start": 1047,
+        "end": 1060,
+        "text": "July 31, 2024",
+        "label": "Date",
+        "score": 0.8234630227088928
+      },
+      {
+        "start": 1342,
+        "end": 1355,
+        "text": "July 31, 2024",
+        "label": "Date",
+        "score": 0.7252110838890076
+      }
+    ],
+    "sample_normalized": [
+      {
+        "entity_id": "E001",
+        "canonical_name": "June 12, 2025",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 180,
+            "end": 193,
+            "text": "June 12, 2025",
+            "label": "Date",
+            "score": 0.9122895002365112
+          }
+        ],
+        "confidence": 0.9122895002365112
+      },
+      {
+        "entity_id": "E002",
+        "canonical_name": "April 29, 2025",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 646,
+            "end": 660,
+            "text": "April 29, 2025",
+            "label": "Date",
+            "score": 0.8541631102561951
+          }
+        ],
+        "confidence": 0.8541631102561951
+      },
+      {
+        "entity_id": "E003",
+        "canonical_name": "July 31, 2024",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 1047,
+            "end": 1060,
+            "text": "July 31, 2024",
+            "label": "Date",
+            "score": 0.8234630227088928
+          }
+        ],
+        "confidence": 0.8234630227088928
+      },
+      {
+        "entity_id": "E004",
+        "canonical_name": "July 31, 2024",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 1342,
+            "end": 1355,
+            "text": "July 31, 2024",
+            "label": "Date",
+            "score": 0.7252110838890076
+          }
+        ],
+        "confidence": 0.7252110838890076
+      }
+    ]
+  },
+  "normalization_analysis": {
+    "current_duplicates": {},
+    "current_duplicate_count": 0,
+    "gliner_groups": [],
+    "groups_formed": 0,
+    "filing_company_analysis": {
+      "company_name": "exactsciences.com",
+      "current_variations": [],
+      "current_variation_count": 0,
+      "gliner_canonical": null,
+      "gliner_mentions": []
+    }
+  },
+  "performance": {
+    "speed_improvement": 0.05536403084525614,
+    "entity_reduction": -4,
+    "reduction_percentage": 0
+  }
+}

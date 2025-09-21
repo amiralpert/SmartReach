@@ -1,0 +1,87 @@
+{
+  "filing": {
+    "accession": "0001576280-25-000246",
+    "type": "10-Q",
+    "company": "guardanthealth.com"
+  },
+  "section_used": "Item 1",
+  "text_sample": "Item 1. Unaudited Condensed Consolidated Financial Statements\nGuardant Health, Inc.\nCondensed Consolidated Balance Sheets (unaudited)\n(in thousands, except share and per share data)\n\n                                                                                                                                                                                                                                                                                           June 30, 2025                Decem...",
+  "full_text": "Item 1. Unaudited Condensed Consolidated Financial Statements\nGuardant Health, Inc.\nCondensed Consolidated Balance Sheets (unaudited)\n(in thousands, except share and per share data)\n\n                                                                                                                                                                                                                                                                                           June 30, 2025                December 31, 2024\nASSETS                                                                                                                                                                                                                                                                                                                                   \nCurrent assets:                                                                                                                                                                                                                                                                                                                          \nCash and cash equivalents                                                                                                                                                                                                                                                                $629,143                        $525,540        \nShort-term marketable debt securities                                                                                                                                                                                                                                                           \u2014                         314,438        \nAccounts receivable, net                                                                                                                                                                                                                                                                  130,252                         110,253        \nInventory, net                                                                                                                                                                                                                                                                             84,061                          71,083        \nPrepaid expenses and other current assets, net                                                                                                                                                                                                                                             39,976                          33,800        \nTotal current assets                                                                                                                                                                                                                                                                      883,432                       1,055,114        \nRestricted cash                                                                                                                                                                                                                                                                           106,337                         104,215        \nProperty and equipment, net                                                                                                                                                                                                                                                               126,141                         136,813        \nRight-of-use assets, net                                                                                                                                                                                                                                                                  169,768                         142,265        \nIntangible assets, net                                                                                                                                                                                                                                                                      5,864                           6,760        \nGoodwill                                                                                                                                                                                                                                                                                    3,290                           3,290        \nOther assets, net                                                                                                                                                                                    ",
+  "current_system": {
+    "entity_count": 0,
+    "unique_entities": 0,
+    "time_seconds": 0.2913823127746582,
+    "sample_entities": []
+  },
+  "gliner_system": {
+    "raw_entity_count": 2,
+    "normalized_group_count": 2,
+    "time_seconds": 4.36859917640686,
+    "sample_raw": [
+      {
+        "start": 466,
+        "end": 479,
+        "text": "June 30, 2025",
+        "label": "Date",
+        "score": 0.7768142223358154
+      },
+      {
+        "start": 495,
+        "end": 512,
+        "text": "December 31, 2024",
+        "label": "Date",
+        "score": 0.7046296000480652
+      }
+    ],
+    "sample_normalized": [
+      {
+        "entity_id": "E001",
+        "canonical_name": "June 30, 2025",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 466,
+            "end": 479,
+            "text": "June 30, 2025",
+            "label": "Date",
+            "score": 0.7768142223358154
+          }
+        ],
+        "confidence": 0.7768142223358154
+      },
+      {
+        "entity_id": "E002",
+        "canonical_name": "December 31, 2024",
+        "label": "Date",
+        "mentions": [
+          {
+            "start": 495,
+            "end": 512,
+            "text": "December 31, 2024",
+            "label": "Date",
+            "score": 0.7046296000480652
+          }
+        ],
+        "confidence": 0.7046296000480652
+      }
+    ]
+  },
+  "normalization_analysis": {
+    "current_duplicates": {},
+    "current_duplicate_count": 0,
+    "gliner_groups": [],
+    "groups_formed": 0,
+    "filing_company_analysis": {
+      "company_name": "guardanthealth.com",
+      "current_variations": [],
+      "current_variation_count": 0,
+      "gliner_canonical": null,
+      "gliner_mentions": []
+    }
+  },
+  "performance": {
+    "speed_improvement": 0.06669925552985109,
+    "entity_reduction": -2,
+    "reduction_percentage": 0
+  }
+}
