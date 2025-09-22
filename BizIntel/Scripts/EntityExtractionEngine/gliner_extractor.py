@@ -96,7 +96,7 @@ class GLiNEREntityExtractor:
             try:
                 if self.debug:
                     print("Loading GLiREL relationship model...")
-                self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-base")
+                self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-large-v0")
                 if self.debug:
                     print("✅ GLiREL relationship model loaded successfully")
             except Exception as e:
@@ -298,6 +298,22 @@ class GLiNEREntityExtractor:
                     print(f"    • {group['canonical_name']}: {mentions}")
 
         return normalized
+
+    def normalize_entities(self, raw_entities: List[Dict], filing_context: Dict = None,
+                         normalization_config: Dict = None) -> List[Dict]:
+        """
+        Normalize entities into canonical groups
+
+        Args:
+            raw_entities: List of raw entity dictionaries from GLiNER
+            filing_context: Context about the filing (company name, etc.)
+            normalization_config: Normalization configuration (defaults to GLINER_CONFIG)
+
+        Returns:
+            List of normalized entity groups
+        """
+        config = normalization_config or GLINER_CONFIG['normalization']
+        return normalize_entities(raw_entities, filing_context or {}, config)
 
     def extract_with_relationships(self, text: str, filing_context: Dict = None,
                                  include_full_text: bool = True) -> Dict:
