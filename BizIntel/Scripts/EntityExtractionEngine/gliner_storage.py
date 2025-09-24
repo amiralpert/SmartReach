@@ -59,14 +59,14 @@ class GLiNEREntityStorage:
                     prepared = self._prepare_gliner_record(record, filing_data)
                     prepared_records.append(prepared)
 
-                # Batch insert using NEW schema columns
+                # Batch insert using ACTUAL schema columns
                 insert_query = """
                     INSERT INTO system_uno.sec_entities_raw (
-                        accession_number, section_type, entity_text, entity_type,
-                        start_position, end_position, confidence_score, canonical_name,
+                        accession_number, section_name, entity_text, entity_type,
+                        character_start, character_end, confidence_score, canonical_name,
                         gliner_entity_id, coreference_group, basic_relationships,
                         section_full_text, is_canonical_mention, extraction_timestamp,
-                        quality_score
+                        company_domain, filing_type, filing_date
                     ) VALUES %s
                 """
 
@@ -105,12 +105,12 @@ class GLiNEREntityStorage:
         quality_score = self._calculate_gliner_quality_score(record)
 
         return (
-            record.get('accession_number', filing_data.get('accession', '')),
-            record.get('section_type', filing_data.get('section', '')),
+            record.get('accession_number', filing_data.get('accession_number', '')),
+            record.get('section_name', filing_data.get('section', '')),
             record.get('entity_text', ''),
             record.get('entity_type', ''),
-            int(record.get('start_position', 0)),
-            int(record.get('end_position', 0)),
+            int(record.get('character_start', record.get('start_position', 0))),
+            int(record.get('character_end', record.get('end_position', 0))),
             float(record.get('confidence_score', 0)),
             record.get('canonical_name', ''),
             record.get('gliner_entity_id', ''),
@@ -119,7 +119,9 @@ class GLiNEREntityStorage:
             record.get('section_full_text'),  # Can be None for TEXT field
             bool(record.get('is_canonical_mention', False)),
             record.get('extraction_timestamp', datetime.now().isoformat()),
-            quality_score
+            filing_data.get('company_domain', ''),
+            filing_data.get('filing_type', ''),
+            filing_data.get('filing_date')
         )
 
     def _calculate_gliner_quality_score(self, record: Dict) -> float:
@@ -146,13 +148,13 @@ class GLiNEREntityStorage:
 
         return min(1.0, quality)  # Cap at 1.0
 
-    def get_entities_for_llama(self, accession_number: str, section_type: str = None) -> List[Dict]:
+    def get_entities_for_llama(self, accession_number: str, section_name: str = None) -> List[Dict]:
         """
         Retrieve GLiNER entities for Llama 3.1 relationship analysis
 
         Args:
             accession_number: SEC filing accession number
-            section_type: Optional section filter
+            section_name: Optional section filter
 
         Returns:
             List of entity dictionaries formatted for Llama input
@@ -173,26 +175,26 @@ class GLiNEREntityStorage:
                 cursor = conn.cursor()
 
                 # Query for GLiNER entities
-                if section_type:
+                if section_name:
                     query = """
-                        SELECT accession_number, section_type, entity_text, entity_type,
-                               start_position, end_position, confidence_score, canonical_name,
+                        SELECT accession_number, section_name, entity_text, entity_type,
+                               character_start, character_end, confidence_score, canonical_name,
                                gliner_entity_id, coreference_group, basic_relationships,
                                section_full_text, is_canonical_mention
                         FROM system_uno.sec_entities_raw
-                        WHERE accession_number = %s AND section_type = %s
-                        ORDER BY start_position
+                        WHERE accession_number = %s AND section_name = %s
+                        ORDER BY character_start
                     """
-                    cursor.execute(query, (accession_number, section_type))
+                    cursor.execute(query, (accession_number, section_name))
                 else:
                     query = """
-                        SELECT accession_number, section_type, entity_text, entity_type,
-                               start_position, end_position, confidence_score, canonical_name,
+                        SELECT accession_number, section_name, entity_text, entity_type,
+                               character_start, character_end, confidence_score, canonical_name,
                                gliner_entity_id, coreference_group, basic_relationships,
                                section_full_text, is_canonical_mention
                         FROM system_uno.sec_entities_raw
                         WHERE accession_number = %s
-                        ORDER BY section_type, start_position
+                        ORDER BY section_name, character_start
                     """
                     cursor.execute(query, (accession_number,))
 
@@ -203,11 +205,11 @@ class GLiNEREntityStorage:
                 for row in results:
                     entity_dict = {
                         'accession_number': row[0],
-                        'section_type': row[1],
+                        'section_name': row[1],
                         'entity_text': row[2],
                         'entity_type': row[3],
-                        'start_position': row[4],
-                        'end_position': row[5],
+                        'character_start': row[4],
+                        'character_end': row[5],
                         'confidence_score': row[6],
                         'canonical_name': row[7],
                         'gliner_entity_id': row[8],
