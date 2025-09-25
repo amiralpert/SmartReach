@@ -21,9 +21,17 @@ except ImportError:
 try:
     from glirel import GLiREL
     GLIREL_AVAILABLE = True
-except ImportError:
+    print("✅ GLiREL imported successfully")
+except ImportError as e:
     GLIREL_AVAILABLE = False
-    print("Warning: GLiREL not installed. Install with: pip install glirel")
+    print(f"❌ GLiREL ImportError: {e}")
+    print("   Install GLiREL with: pip install glirel")
+except Exception as e:
+    GLIREL_AVAILABLE = False
+    print(f"❌ GLiREL import failed with unexpected error: {type(e).__name__}: {e}")
+    print("   This may indicate version compatibility issues")
+    import traceback
+    traceback.print_exc()
 
 from .gliner_config import GLINER_CONFIG
 from .gliner_normalization import normalize_entities, group_similar_entities
@@ -101,8 +109,15 @@ class GLiNEREntityExtractor:
                     print("✅ GLiREL relationship model loaded successfully")
             except Exception as e:
                 if self.debug:
-                    print(f"⚠️  Could not load GLiREL: {e}")
+                    print(f"❌ Could not load GLiREL model: {type(e).__name__}: {e}")
+                    print("   This may indicate:")
+                    print("   - Model download issues")
+                    print("   - Version compatibility problems")
+                    print("   - Missing dependencies")
+                    import traceback
+                    traceback.print_exc()
                 self.enable_relationships = False
+                print("   🔄 Continuing with entity extraction only (relationships disabled)")
 
         if self.debug:
             print(f"✅ GLiNER entity model loaded successfully")
