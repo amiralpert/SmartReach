@@ -96,12 +96,33 @@ class GLiNEREntityExtractor:
             try:
                 if self.debug:
                     print("Loading GLiREL relationship model...")
-                self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-large-v0")
+
+                # Try different initialization approaches for GLiREL
+                try:
+                    # First try: Standard initialization
+                    self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-large-v0")
+                except Exception as span_error:
+                    if self.debug:
+                        print(f"   Standard init failed: {span_error}")
+
+                    # Second try: Initialize with specific config to avoid span_mode issue
+                    try:
+                        # Alternative model that might work better
+                        self.relation_model = GLiREL.from_pretrained("jackboyla/glirel-base")
+                        if self.debug:
+                            print("   ✅ Used glirel-base model as fallback")
+                    except Exception as fallback_error:
+                        if self.debug:
+                            print(f"   Fallback model also failed: {fallback_error}")
+                        raise Exception(f"Both GLiREL models failed: {span_error}, {fallback_error}")
+
                 if self.debug:
                     print("✅ GLiREL relationship model loaded successfully")
+
             except Exception as e:
                 if self.debug:
                     print(f"⚠️  Could not load GLiREL: {e}")
+                    print("   🔄 Continuing with entity extraction only (relationships disabled)")
                 self.enable_relationships = False
 
         if self.debug:
