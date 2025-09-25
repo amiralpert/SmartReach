@@ -101,17 +101,10 @@ class GLiNEREntityStorage:
             filing_data: Filing metadata
         """
 
-        # Debug logging for section name issue
-        section_name_from_record = record.get('section_name', 'NOT_FOUND_IN_RECORD')
-        section_name_from_filing = filing_data.get('section', 'NOT_FOUND_IN_FILING')
-
-        print(f"   🐛 Debug - section_name in record: '{section_name_from_record}'")
-        print(f"   🐛 Debug - section in filing_data: '{section_name_from_filing}'")
-
         # Calculate quality score based on GLiNER confidence and relationships
         quality_score = self._calculate_gliner_quality_score(record)
 
-        result_tuple = (
+        return (
             record.get('accession_number', filing_data.get('accession_number', '')),
             record.get('section_name', filing_data.get('section', '')),
             record.get('entity_text', ''),
@@ -130,11 +123,6 @@ class GLiNEREntityStorage:
             filing_data.get('filing_type', ''),
             filing_data.get('filing_date')
         )
-
-        print(f"   🐛 Debug - section_name going to DB: '{result_tuple[1]}'")
-        print(f"   🐛 Debug - entity_text: '{result_tuple[2]}'")
-
-        return result_tuple
 
     def _calculate_gliner_quality_score(self, record: Dict) -> float:
         """
