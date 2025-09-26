@@ -5,25 +5,57 @@ Main pipeline execution flow with comprehensive results display and analytics.
 
 from typing import Dict, List
 from .database_queries import get_unprocessed_filings
+from .database_utils import get_db_connection
 from .batch_processor import process_filings_batch
 from .analytics_reporter import generate_pipeline_analytics_report
 
 
-def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_storage, 
-                         semantic_storage, config: Dict) -> Dict:
-    """Execute the complete SEC filing processing pipeline with comprehensive reporting"""
-    
+def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_storage,
+                         semantic_storage, config: Dict, db_config: Dict = None) -> Dict:
+    """Execute the complete SEC filing processing pipeline with comprehensive reporting
+
+    Args:
+        entity_pipeline: Entity extraction pipeline
+        relationship_extractor: Llama 3.1 relationship extractor
+        pipeline_storage: Entity storage handler
+        semantic_storage: Semantic relationship storage handler
+        config: Pipeline configuration
+        db_config: Database configuration (optional, uses default if None)
+    """
+
     print("="*80)
     print("🚀 STARTING SEC FILING PROCESSING PIPELINE")
     print("="*80)
-    
+
     # Display configuration
     print("📝 Relationship extraction enabled with local Llama 3.1-8B")
     print("   ℹ️ Using local Llama 3.1-8B for relationship extraction")
-    
+
+    # Create database connection function
+    def get_db_connection_func():
+        """Database connection using provided or default config"""
+        if db_config:
+            return get_db_connection(db_config)
+        else:
+            # Try to get from Kaggle secrets if no config provided
+            try:
+                from kaggle_secrets import UserSecretsClient
+                user_secrets = UserSecretsClient()
+                default_config = {
+                    'host': user_secrets.get_secret("NEON_HOST"),
+                    'database': user_secrets.get_secret("NEON_DATABASE"),
+                    'user': user_secrets.get_secret("NEON_USER"),
+                    'password': user_secrets.get_secret("NEON_PASSWORD"),
+                    'port': 5432,
+                    'sslmode': 'require'
+                }
+                return get_db_connection(default_config)
+            except:
+                raise ValueError("Database configuration required")
+
     # Check for available unprocessed filings
     print("\n📊 Checking for unprocessed filings...")
-    available_filings = get_unprocessed_filings(limit=config["processing"]["filing_query_limit"])
+    available_filings = get_unprocessed_filings(get_db_connection_func, limit=config["processing"]["filing_query_limit"])
     print(f"   Found {len(available_filings)} unprocessed filings")
     
     if not available_filings:
