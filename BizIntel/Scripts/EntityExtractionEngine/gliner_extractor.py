@@ -118,6 +118,10 @@ class GLiNEREntityExtractor:
                     traceback.print_exc()
                 self.enable_relationships = False
                 print("   🔄 Continuing with entity extraction only (relationships disabled)")
+        else:
+            if self.debug:
+                print("🔄 GLiREL relationship extraction disabled in configuration")
+                print("   Reason: Poor quality results on SEC filing text")
 
         if self.debug:
             print(f"✅ GLiNER entity model loaded successfully")
@@ -198,7 +202,14 @@ class GLiNEREntityExtractor:
         Returns:
             List of relationship dictionaries
         """
-        if not self.enable_relationships or not self.relation_model:
+        if not self.enable_relationships:
+            if self.debug:
+                print("🔄 Relationship extraction disabled - returning empty list")
+            return []
+
+        if not self.relation_model:
+            if self.debug:
+                print("❌ No GLiREL model available - returning empty list")
             return []
 
         # Auto-extract entities if not provided
