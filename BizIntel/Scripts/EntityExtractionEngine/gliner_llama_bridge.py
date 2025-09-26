@@ -57,7 +57,7 @@ class GLiNERLlamaBridge:
             entity_records = extraction_result.get('entity_records', [])
             self.entity_cache[filing_key] = entity_records
 
-            # Store GLiNER relationships
+            # Store GLiNER relationships (empty list if GLiREL disabled)
             relationships = extraction_result.get('relationships', [])
             self.relationship_cache[filing_key] = relationships
 
@@ -65,7 +65,11 @@ class GLiNERLlamaBridge:
             entity_contexts = self._prepare_entity_contexts(entity_records, relationships)
             self.context_cache[filing_key] = entity_contexts
 
-            print(f"   💾 Cached {len(entity_records)} entities and {len(relationships)} relationships for {filing_key}")
+            # Adjust logging based on GLiREL status
+            if relationships:
+                print(f"   💾 Cached {len(entity_records)} entities and {len(relationships)} relationships for {filing_key}")
+            else:
+                print(f"   💾 Cached {len(entity_records)} entities for {filing_key} (GLiREL relationships disabled)")
 
         except Exception as e:
             print(f"   ❌ Failed to store GLiNER results: {e}")
@@ -219,25 +223,26 @@ class GLiNERLlamaBridge:
     def _create_enhanced_prompt_template(self) -> str:
         """Create enhanced prompt template that includes GLiNER entities as input"""
         return """
-You are analyzing SEC filing entities and relationships. GLiNER has already identified entities and basic relationships.
-Your task is to find complex semantic relationships that GLiNER missed.
+You are analyzing SEC filing entities and relationships. GLiNER has identified entities from the text.
+Your task is to find complex semantic relationships between these entities.
 
 GLiNER Entities Found:
 {gliner_entities}
 
-GLiNER Basic Relationships:
+Existing Relationships (if any):
 {existing_relationships}
 
 Full Section Text:
 {full_text}
 
-Find additional complex relationships between these entities, focusing on:
-- Business relationships (partnerships, acquisitions, investments)
-- Executive relationships (leadership roles, board positions)
-- Financial relationships (ownership stakes, funding sources)
-- Strategic relationships (collaborations, joint ventures)
+Find complex relationships between these entities, focusing on:
+- Business relationships (partnerships, acquisitions, investments, subsidiaries)
+- Executive relationships (leadership roles, board positions, employment)
+- Financial relationships (ownership stakes, funding sources, investments)
+- Strategic relationships (collaborations, joint ventures, contracts)
+- Regulatory relationships (compliance, oversight, licensing)
 
-Return only NEW relationships not already found by GLiNER in the specified format.
+Return relationships in the specified JSON format with entity pairs and relationship types.
 """
 
     def _entity_context_to_dict(self, context: EntityContext) -> Dict:
