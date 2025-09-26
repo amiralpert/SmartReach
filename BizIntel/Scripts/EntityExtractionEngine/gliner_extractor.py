@@ -242,6 +242,14 @@ class GLiNEREntityExtractor:
 
                 ner_data.append([start_token, end_token, entity_type, entity_text])
 
+            # Debug logging for GLiREL
+            if self.debug:
+                print(f"  🔍 GLiREL Debug:")
+                print(f"    - Tokens: {len(tokens)} tokens")
+                print(f"    - NER entities: {len(ner_data)} entities")
+                print(f"    - Relation types: {relation_types}")
+                print(f"    - Sample NER data: {ner_data[:2] if ner_data else 'None'}")
+
             # Extract relationships using GLiREL v1.2.1 API
             # predict_relations expects: tokens, labels, threshold, ner, top_k
             relations = self.relation_model.predict_relations(
@@ -251,6 +259,12 @@ class GLiNEREntityExtractor:
                 ner=ner_data,    # Entity position data
                 top_k=-1         # Get all predictions
             )
+
+            # Debug: Show raw GLiREL output
+            if self.debug:
+                print(f"    - GLiREL returned: {len(relations)} raw relationships")
+                if relations:
+                    print(f"    - Sample relation: {relations[0] if relations else 'None'}")
 
             extraction_time = time.time() - start_time
 
