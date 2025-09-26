@@ -12,13 +12,25 @@ from .timeout_utils import with_timeout, TimeoutError
 from .logging_utils import log_error, log_warning, log_info
 from .config_data import PROBLEMATIC_FILINGS, MAX_HTML_SIZE
 
+# Global cache for EdgarTools find() results - persists across function calls
+FILING_FIND_CACHE = {}
 
 @with_timeout(30)  # 30 second timeout
 def find_filing_with_timeout(accession_number: str):
-    """Find filing with timeout protection"""
+    """Find filing with timeout protection and caching"""
+    # Check cache first to avoid repeated API calls
+    if accession_number in FILING_FIND_CACHE:
+        print(f"   📋 Using cached filing for {accession_number} (skipping API call)")
+        return FILING_FIND_CACHE[accession_number]
+
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting EdgarTools find() for {accession_number}")
     filing = find(accession_number)
     print(f"[{datetime.now().strftime('%H:%M:%S')}] find() completed successfully")
+
+    # Cache the result for future use
+    FILING_FIND_CACHE[accession_number] = filing
+    print(f"   💾 Cached filing for {accession_number}")
+
     return filing
 
 
