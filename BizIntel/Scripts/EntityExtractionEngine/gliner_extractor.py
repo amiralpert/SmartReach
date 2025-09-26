@@ -224,14 +224,32 @@ class GLiNEREntityExtractor:
         start_time = time.time()
 
         try:
-            # Prepare entity list for GLiREL
-            entity_texts = [entity['text'] for entity in entities]
+            # Tokenize text for GLiREL
+            tokens = text.split()  # Simple tokenization
 
-            # Extract relationships using GLiREL
+            # Prepare NER data for GLiREL (entity positions and types)
+            ner_data = []
+            for entity in entities:
+                # Find token positions for entity
+                entity_text = entity['text']
+                start_pos = entity.get('start', 0)
+                end_pos = entity.get('end', len(entity_text))
+                entity_type = entity.get('label', 'ENTITY')
+
+                # Convert character positions to token indices (approximate)
+                start_token = len(text[:start_pos].split())
+                end_token = start_token + len(entity_text.split())
+
+                ner_data.append([start_token, end_token, entity_type, entity_text])
+
+            # Extract relationships using GLiREL v1.2.1 API
+            # predict_relations expects: tokens, labels, threshold, ner, top_k
             relations = self.relation_model.predict_relations(
-                text,
-                entity_texts,
-                relations=relation_types
+                tokens,
+                relation_types,  # These are the relation labels
+                threshold=0.0,   # We'll filter by confidence later
+                ner=ner_data,    # Entity position data
+                top_k=-1         # Get all predictions
             )
 
             extraction_time = time.time() - start_time
@@ -241,19 +259,21 @@ class GLiNEREntityExtractor:
             confidence_threshold = GLINER_CONFIG.get('relation_threshold', 0.6)
 
             for relation in relations:
-                if relation.get('confidence', 0) >= confidence_threshold:
+                # GLiREL v1.2.1 returns 'score' instead of 'confidence' and 'label' instead of 'relation'
+                score = relation.get('score', 0)
+                if score >= confidence_threshold:
                     rel_dict = {
-                        'head_entity': relation['head_text'],
-                        'relation': relation['relation'],
-                        'tail_entity': relation['tail_text'],
-                        'confidence': relation['confidence'],
-                        'context': text[max(0, relation.get('start', 0)-50):
-                                     min(len(text), relation.get('end', len(text))+50)]
+                        'head_entity': relation.get('head_text', ''),
+                        'relation': relation.get('label', ''),  # GLiREL uses 'label' for relation type
+                        'tail_entity': relation.get('tail_text', ''),
+                        'confidence': score,  # Map score to confidence
+                        'context': text[max(0, relation.get('head_pos', [0])[0]*5-50):
+                                     min(len(text), relation.get('tail_pos', [len(text)])[1]*5+50)]
                     }
                     filtered_relations.append(rel_dict)
 
                     # Update stats
-                    rel_type = relation['relation']
+                    rel_type = relation.get('label', 'unknown')
                     self.stats['relationships_by_type'][rel_type] = \
                         self.stats['relationships_by_type'].get(rel_type, 0) + 1
 
