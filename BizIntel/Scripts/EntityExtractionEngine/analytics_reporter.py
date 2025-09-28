@@ -80,36 +80,36 @@ def generate_pipeline_analytics_report():
             # Relationship statistics if available
             try:
                 cursor.execute("""
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_relationships,
-                        COUNT(DISTINCT bucket_id) as unique_buckets,
-                        COUNT(DISTINCT company_domain) as companies_with_relationships
-                    FROM system_uno.semantic_events se
-                    JOIN system_uno.semantic_buckets sb ON se.bucket_id = sb.bucket_id
+                        COUNT(DISTINCT se.bucket_id) as unique_buckets,
+                        COUNT(DISTINCT rb.company_domain) as companies_with_relationships
+                    FROM system_uno.relationship_semantic_events se
+                    JOIN system_uno.relationship_buckets rb ON se.bucket_id = rb.bucket_id
                 """)
-                
+
                 rel_stats = cursor.fetchone()
-                
+
                 if rel_stats and rel_stats[0] > 0:
                     print(f"\n🔗 Relationship Analytics:")
                     print(f"   • Total relationships: {rel_stats[0]:,}")
                     print(f"   • Semantic buckets: {rel_stats[1]:,}")
                     print(f"   • Companies with relationships: {rel_stats[2]:,}")
-                    
+
                     # Top relationship types
                     cursor.execute("""
                         SELECT relationship_type, COUNT(*) as count
-                        FROM system_uno.semantic_buckets
+                        FROM system_uno.relationship_buckets
                         GROUP BY relationship_type
                         ORDER BY count DESC
                         LIMIT 5
                     """)
-                    
+
                     rel_types = cursor.fetchall()
                     print(f"\n🏷️ Top Relationship Types:")
                     for rel_type, count in rel_types:
                         print(f"   • {rel_type}: {count:,}")
-                
+
                 else:
                     print(f"\n📝 No relationship data found")
             

@@ -78,114 +78,117 @@ class SemanticRelationshipStorage:
     def _find_or_create_bucket(self, conn, relationship: Dict, session_id: str) -> str:
         """Find existing bucket or create new one for relationship type"""
         cursor = conn.cursor()
-        
-        # Bucket key based on relationship type and semantic action
-        bucket_key = f"{relationship.get('relationship_type', 'UNKNOWN')}_{relationship.get('semantic_action', 'unknown')}"
-        
+
+        company_domain = relationship.get('company_domain', 'unknown')
+        entity_name = relationship.get('entity_text', 'unknown')
+        relationship_type = relationship.get('relationship_type', 'UNKNOWN')
+
         # Check for existing bucket
         cursor.execute("""
-            SELECT bucket_id FROM system_uno.semantic_buckets 
-            WHERE bucket_key = %s AND company_domain = %s
-        """, (bucket_key, relationship.get('company_domain')))
-        
+            SELECT bucket_id FROM system_uno.relationship_buckets
+            WHERE company_domain = %s AND entity_name = %s AND relationship_type = %s
+        """, (company_domain, entity_name, relationship_type))
+
         result = cursor.fetchone()
         if result:
             return result[0]
-        
+
         # Create new bucket
         bucket_id = str(uuid.uuid4())
         cursor.execute("""
-            INSERT INTO system_uno.semantic_buckets (
-                bucket_id, bucket_key, company_domain, relationship_type,
-                semantic_action, created_at, analysis_session_id
+            INSERT INTO system_uno.relationship_buckets (
+                bucket_id, company_domain, entity_name, relationship_type,
+                first_mentioned_date, last_mentioned_date, total_mentions
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            bucket_id, bucket_key, relationship.get('company_domain'),
-            relationship.get('relationship_type'), relationship.get('semantic_action'),
-            datetime.now(), session_id
+            bucket_id, company_domain, entity_name, relationship_type,
+            relationship.get('filing_date'), relationship.get('filing_date'), 1
         ))
-        
+
         self.storage_stats['buckets_created'] += 1
         return bucket_id
     
     def _store_semantic_event(self, conn, relationship: Dict, bucket_id: str, session_id: str):
         """Store individual semantic event"""
         cursor = conn.cursor()
-        
-        # Prepare semantic tags as JSON
+
+        # Prepare semantic tags as array for PostgreSQL
         semantic_tags = relationship.get('semantic_tags', [])
-        if isinstance(semantic_tags, list):
-            semantic_tags_json = json.dumps(semantic_tags)
-        else:
-            semantic_tags_json = json.dumps([])
-        
+        if not isinstance(semantic_tags, list):
+            semantic_tags = []
+
         cursor.execute("""
-            INSERT INTO system_uno.semantic_events (
-                event_id, bucket_id, entity_text, entity_extraction_id,
+            INSERT INTO system_uno.relationship_semantic_events (
+                bucket_id, source_entity_id, sec_filing_ref, filing_date,
+                filing_type, section_name, semantic_summary, semantic_action,
                 semantic_impact, semantic_tags, monetary_value, percentage_value,
                 duration_months, entity_count, mentioned_time_period,
-                temporal_precision, confidence_level, summary,
-                business_impact_summary, regulatory_implications,
-                competitive_implications, section_name, sec_filing_ref,
-                extraction_timestamp, analysis_session_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                temporal_precision, business_impact_summary, regulatory_implications,
+                competitive_implications, original_context_snippet,
+                character_position_start, character_position_end, confidence_score
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            str(uuid.uuid4()), bucket_id, relationship.get('entity_text'),
-            relationship.get('entity_extraction_id'), relationship.get('semantic_impact'),
-            semantic_tags_json, relationship.get('monetary_value'),
+            bucket_id, relationship.get('source_entity_id'),
+            relationship.get('sec_filing_ref'), relationship.get('filing_date'),
+            relationship.get('filing_type'), relationship.get('section_name'),
+            relationship.get('summary', relationship.get('semantic_summary', '')),
+            relationship.get('semantic_action'), relationship.get('semantic_impact'),
+            semantic_tags, relationship.get('monetary_value'),
             relationship.get('percentage_value'), relationship.get('duration_months'),
             relationship.get('entity_count'), relationship.get('mentioned_time_period'),
-            relationship.get('temporal_precision'), relationship.get('confidence_level'),
-            relationship.get('summary'), relationship.get('business_impact_summary'),
+            relationship.get('temporal_precision'), relationship.get('business_impact_summary'),
             relationship.get('regulatory_implications'), relationship.get('competitive_implications'),
-            relationship.get('section_name'), relationship.get('sec_filing_ref'),
-            relationship.get('extraction_timestamp'), session_id
+            relationship.get('original_context_snippet', relationship.get('context', '')),
+            relationship.get('character_position_start', relationship.get('char_start')),
+            relationship.get('character_position_end', relationship.get('char_end')),
+            float(relationship.get('confidence_score', 0.5))
         ))
-        
+
         self.storage_stats['events_stored'] += 1
     
     def _update_bucket_aggregation(self, conn, bucket_id: str, relationship: Dict):
         """Update bucket-level aggregations"""
         cursor = conn.cursor()
-        
+
         # Update bucket with latest metrics
         cursor.execute("""
-            UPDATE system_uno.semantic_buckets 
-            SET 
-                total_events = (
-                    SELECT COUNT(*) FROM system_uno.semantic_events 
+            UPDATE system_uno.relationship_buckets
+            SET
+                total_mentions = (
+                    SELECT COUNT(*) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s
                 ),
-                avg_confidence = (
-                    SELECT AVG(
-                        CASE 
-                            WHEN confidence_level = 'high' THEN 0.9
-                            WHEN confidence_level = 'medium' THEN 0.7
-                            WHEN confidence_level = 'low' THEN 0.5
-                            ELSE 0.6
-                        END
-                    ) FROM system_uno.semantic_events 
+                avg_confidence_score = (
+                    SELECT AVG(confidence_score) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s
                 ),
                 total_monetary_value = (
-                    SELECT SUM(monetary_value) FROM system_uno.semantic_events 
+                    SELECT SUM(monetary_value) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s AND monetary_value IS NOT NULL
                 ),
-                last_updated = %s
+                last_mentioned_date = (
+                    SELECT MAX(filing_date) FROM system_uno.relationship_semantic_events
+                    WHERE bucket_id = %s
+                ),
+                updated_at = %s
             WHERE bucket_id = %s
-        """, (bucket_id, bucket_id, bucket_id, datetime.now(), bucket_id))
+        """, (bucket_id, bucket_id, bucket_id, bucket_id, datetime.now(), bucket_id))
     
     def create_analysis_session(self, conn, filing_ref: str, relationship_count: int) -> str:
-        """Create analysis session for tracking"""
+        """Create analysis session for tracking using existing semantic_analysis_sessions table"""
         cursor = conn.cursor()
         session_id = str(uuid.uuid4())
-        
+
+        # Extract company domain from filing_ref if available
+        company_domain = filing_ref.replace('SEC_', '') if filing_ref.startswith('SEC_') else 'unknown'
+
         cursor.execute("""
-            INSERT INTO system_uno.analysis_sessions (
-                session_id, filing_ref, relationship_count, created_at, status
-            ) VALUES (%s, %s, %s, %s, %s)
-        """, (session_id, filing_ref, relationship_count, datetime.now(), 'active'))
-        
+            INSERT INTO system_uno.semantic_analysis_sessions (
+                session_id, company_domain, filing_batch, entities_processed,
+                events_created, session_status
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        """, (session_id, company_domain, [filing_ref], 0, relationship_count, 'RUNNING'))
+
         return session_id
     
     def get_storage_stats(self) -> Dict:
