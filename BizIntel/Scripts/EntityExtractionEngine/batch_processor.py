@@ -8,16 +8,35 @@ from typing import Dict, List
 from .database_queries import get_unprocessed_filings
 
 
-def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage, 
+def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage,
                          semantic_storage, config: Dict, limit: int = None) -> Dict:
     """Process multiple SEC filings with both entity and relationship extraction"""
     if limit is None:
         limit = config['processing']['filing_batch_size']
-    
+
     print(f"🚀 Starting batch processing of {limit} filings...")
-    
+
+    # Create database connection function
+    def get_db_connection_func():
+        """Database connection using Kaggle secrets"""
+        try:
+            from kaggle_secrets import UserSecretsClient
+            import psycopg2
+
+            user_secrets = UserSecretsClient()
+            return psycopg2.connect(
+                host=user_secrets.get_secret("NEON_HOST"),
+                database=user_secrets.get_secret("NEON_DATABASE"),
+                user=user_secrets.get_secret("NEON_USER"),
+                password=user_secrets.get_secret("NEON_PASSWORD"),
+                port=5432,
+                sslmode='require'
+            )
+        except:
+            raise ValueError("Database configuration required")
+
     # Get filings to process
-    filings_to_process = get_unprocessed_filings(limit=limit)
+    filings_to_process = get_unprocessed_filings(get_db_connection_func, limit=limit)
     
     if not filings_to_process:
         return {
