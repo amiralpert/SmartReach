@@ -44,30 +44,39 @@ class SemanticRelationshipStorage:
                 
                 print(f"   📦 Storing {len(relationships)} relationships with semantic buckets...")
                 
+                # Extract company domain from filing_ref
+                company_domain = filing_ref.replace('SEC_', '') if filing_ref.startswith('SEC_') else 'unknown'
+
                 # Create analysis session
                 session_id = self.create_analysis_session(conn, filing_ref, len(relationships))
-                
+
                 for relationship in relationships:
                     try:
+                        # Ensure relationship has company_domain
+                        if 'company_domain' not in relationship:
+                            relationship['company_domain'] = company_domain
+
                         # Find or create semantic bucket
                         bucket_id = self._find_or_create_bucket(
                             conn, relationship, session_id
                         )
-                        
+
                         # Store semantic event
                         self._store_semantic_event(conn, relationship, bucket_id, session_id)
-                        
+
                         # Update bucket aggregation
                         self._update_bucket_aggregation(conn, bucket_id, relationship)
-                        
+
+                        # Commit each relationship individually to avoid transaction abort
+                        conn.commit()
                         self.storage_stats['relationships_stored'] += 1
-                        
+
                     except Exception as e:
                         print(f"      ⚠️ Failed to store relationship for {relationship.get('entity_text')}: {e}")
+                        # Rollback this relationship and continue with next
+                        conn.rollback()
                         self.storage_stats['storage_errors'] += 1
                         continue
-                
-                conn.commit()
                 print(f"   ✅ Stored {self.storage_stats['relationships_stored']} relationships")
                 return True
                 
@@ -94,6 +103,9 @@ class SemanticRelationshipStorage:
             return result[0]
 
         # Create new bucket
+        from datetime import date
+        filing_date = relationship.get('filing_date') or date.today()
+
         bucket_id = str(uuid.uuid4())
         cursor.execute("""
             INSERT INTO system_uno.relationship_buckets (
@@ -102,7 +114,7 @@ class SemanticRelationshipStorage:
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
             bucket_id, company_domain, entity_name, relationship_type,
-            relationship.get('filing_date'), relationship.get('filing_date'), 1
+            filing_date, filing_date, 1
         ))
 
         self.storage_stats['buckets_created'] += 1
@@ -117,6 +129,11 @@ class SemanticRelationshipStorage:
         if not isinstance(semantic_tags, list):
             semantic_tags = []
 
+        # Handle required fields with defaults
+        from datetime import date
+        filing_date = relationship.get('filing_date') or date.today()
+        sec_filing_ref = relationship.get('sec_filing_ref', 'unknown')
+
         cursor.execute("""
             INSERT INTO system_uno.relationship_semantic_events (
                 bucket_id, source_entity_id, sec_filing_ref, filing_date,
@@ -129,7 +146,7 @@ class SemanticRelationshipStorage:
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             bucket_id, relationship.get('source_entity_id'),
-            relationship.get('sec_filing_ref'), relationship.get('filing_date'),
+            sec_filing_ref, filing_date,
             relationship.get('filing_type'), relationship.get('section_name'),
             relationship.get('summary', relationship.get('semantic_summary', '')),
             relationship.get('semantic_action'), relationship.get('semantic_impact'),
