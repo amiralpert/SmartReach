@@ -29,12 +29,11 @@ def generate_pipeline_analytics_report():
             
             # Entity extraction statistics
             cursor.execute("""
-                SELECT 
+                SELECT
                     COUNT(*) as total_entities,
                     COUNT(DISTINCT company_domain) as unique_companies,
-                    COUNT(DISTINCT sec_filing_ref) as processed_filings,
-                    AVG(confidence_score)::numeric(4,3) as avg_confidence,
-                    AVG(quality_score)::numeric(4,3) as avg_quality
+                    COUNT(DISTINCT accession_number) as processed_filings,
+                    AVG(confidence_score)::numeric(4,3) as avg_confidence
                 FROM system_uno.sec_entities_raw
             """)
             
@@ -46,7 +45,6 @@ def generate_pipeline_analytics_report():
                 print(f"   • Unique companies: {entity_stats[1]:,}")
                 print(f"   • Processed filings: {entity_stats[2]:,}")
                 print(f"   • Average confidence: {entity_stats[3]}")
-                print(f"   • Average quality: {entity_stats[4]}")
                 
                 # Entity type distribution
                 cursor.execute("""
@@ -62,16 +60,17 @@ def generate_pipeline_analytics_report():
                 for entity_type, count in entity_types:
                     print(f"   • {entity_type}: {count:,}")
                 
-                # Model performance
+                # GLiNER model performance
                 cursor.execute("""
-                    SELECT primary_model, COUNT(*) as count, AVG(confidence_score)::numeric(4,3) as avg_conf
+                    SELECT gliner_model_version, COUNT(*) as count, AVG(confidence_score)::numeric(4,3) as avg_conf
                     FROM system_uno.sec_entities_raw
-                    GROUP BY primary_model
+                    WHERE gliner_model_version IS NOT NULL
+                    GROUP BY gliner_model_version
                     ORDER BY count DESC
                 """)
-                
+
                 model_performance = cursor.fetchall()
-                print(f"\n🤖 Model Performance:")
+                print(f"\n🤖 GLiNER Model Performance:")
                 for model, count, avg_conf in model_performance:
                     print(f"   • {model}: {count:,} entities (avg confidence: {avg_conf})")
             
