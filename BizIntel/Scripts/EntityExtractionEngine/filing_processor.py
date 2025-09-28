@@ -23,9 +23,7 @@ def process_sec_filing_with_sections(filing_data: Dict, section_cache=None, conf
         company_domain = filing_data.get('company_domain', 'Unknown')
         filing_url = filing_data.get('url')  # Still keep for reference
         
-        log_info("FilingProcessor", f"Processing {filing_type} for {company_domain}")
-        print(f"   📄 Filing ID: {filing_id}")
-        print(f"   📑 Accession: {accession_number}")
+        log_info("FilingProcessor", f"Processing {filing_type} for {company_domain} (ID: {filing_id}, Accession: {accession_number})")
         
         # Validate accession number
         if not accession_number:
@@ -52,7 +50,7 @@ def process_sec_filing_with_sections(filing_data: Dict, section_cache=None, conf
         
         # Route sections to models
         model_routing = route_sections_to_models(sections, filing_type)
-        print(f"   🎯 Model routing: {[f'{model}: {len(secs)} sections' for model, secs in model_routing.items()]}")
+        log_info("FilingProcessor", f"Model routing: {len(model_routing)} models assigned")
         
         # Validate section names if configured
         if config and config.get('processing', {}).get('section_validation'):
@@ -64,7 +62,7 @@ def process_sec_filing_with_sections(filing_data: Dict, section_cache=None, conf
         if section_cache:
             cache_stats = section_cache.get_stats()
             if cache_stats['hits'] > 0:
-                print(f"   📊 Cache: {cache_stats['hit_rate']:.1f}% hit rate, {cache_stats['size_mb']:.1f}MB used")
+                log_info("FilingProcessor", f"Cache: {cache_stats['hit_rate']:.1f}% hit rate, {cache_stats['size_mb']:.1f}MB used")
         
         return {
             'filing_id': filing_id,

@@ -11,7 +11,7 @@ from transformers import pipeline
 
 
 class EntityExtractionPipeline:
-    """Streamlined entity extraction using Cell 2's pre-processed sections and routing"""
+    """Streamlined entity extraction using EdgarTools pre-processed sections and routing"""
     
     def __init__(self, config: Dict):
         self.config = config
@@ -28,10 +28,10 @@ class EntityExtractionPipeline:
         self._finbert_common_words = {'the', 'and', 'or', 'but', 'company', 'inc', 'corporation', 'corp'}
         self._bert_skip_misc = True  # Skip BERT MISC category
         
-        # Map Cell 2's routing names to our model names
+        # Map EdgarTools routing names to our model names
         self._routing_to_model_map = {
             'biobert': 'biobert',
-            'bert_base': 'bert',      # Cell 2 uses 'bert_base'
+            'bert_base': 'bert',      # EdgarTools uses 'bert_base'
             'roberta': 'roberta', 
             'finbert': 'finbert'
         }

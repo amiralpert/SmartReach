@@ -1,6 +1,6 @@
 """
-GLiNER Entity and Relationship Extractor for SEC Filings
-Enhanced pipeline with GLiNER entity extraction and GLiREL relationship extraction
+GLiNER Entity Extractor for SEC Filings
+Enhanced pipeline with GLiNER entity extraction (relationships via Llama 3.1)
 Designed to work with existing Llama 3.1 semantic analysis architecture
 """
 
@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass
 
-# GLiNER and GLiREL will be installed in Kaggle environment
+# GLiNER will be installed in Kaggle environment
 try:
     from gliner import GLiNER
     GLINER_AVAILABLE = True
@@ -255,7 +255,7 @@ class GLiNEREntityExtractor:
 
             # Debug logging for GLiREL
             if self.debug:
-                print(f"  🔍 GLiREL Debug:")
+                print(f"  🔍 Relationship Debug (GLiREL disabled):")
                 print(f"    - Tokens: {len(tokens)} tokens")
                 print(f"    - NER entities: {len(ner_data)} entities")
                 print(f"    - Relation types: {relation_types}")

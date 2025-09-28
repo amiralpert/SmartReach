@@ -45,7 +45,7 @@ class PipelineEntityStorage:
             ) as conn:
                 cursor = conn.cursor()
                 
-                print(f"   💾 Storing {len(entities)} entities to database...")
+                # Store entities to database
                 
                 # Prepare entities for batch insert
                 entity_records = []
@@ -78,7 +78,7 @@ class PipelineEntityStorage:
                 self.storage_stats['merged_entities'] += merged_count
                 self.storage_stats['single_model_entities'] += (len(entities) - merged_count)
                 
-                print(f"   ✅ Successfully stored {len(entities)} entities")
+                # Successfully stored entities
                 return True
                 
         except Exception as e:
