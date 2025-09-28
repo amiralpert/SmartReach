@@ -59,7 +59,7 @@ class PipelineEntityStorage:
                 insert_query = """
                     INSERT INTO system_uno.sec_entities_raw (
                         extraction_id, company_domain, entity_text, entity_type,
-                        confidence_score, character_start, character_end, surrounding_text,
+                        confidence_score, character_start, character_end, surrounding_context,
                         models_detected, all_confidences, primary_model, entity_variations,
                         is_merged, section_name, data_source, extraction_timestamp,
                         original_label, quality_score, consensus_count,
@@ -121,7 +121,7 @@ class PipelineEntityStorage:
             float(entity.get('confidence_score', 0)),
             int(char_start),  # character_start
             int(char_end),    # character_end
-            entity.get('surrounding_text', ''),
+            entity.get('surrounding_context', entity.get('surrounding_text', '')),
             models_detected,
             all_confidences,
             entity.get('primary_model', entity.get('model_source', '')),
