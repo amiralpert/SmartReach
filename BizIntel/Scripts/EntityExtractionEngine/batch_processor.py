@@ -7,6 +7,8 @@ import time
 from typing import Dict, List
 from .database_queries import get_unprocessed_filings
 
+# Circuit breaker for storage failures
+_STORAGE_FAILURES = {'count': 0, 'last_reset': time.time()}
 
 def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage,
                          semantic_storage, config: Dict, limit: int = None) -> Dict:
@@ -83,6 +85,27 @@ def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_stor
             
             if not entity_storage_success:
                 print("   ❌ Entity storage failed")
+
+                # Circuit breaker: Track storage failures
+                _STORAGE_FAILURES['count'] += 1
+                current_time = time.time()
+
+                # Reset failure count every 5 minutes
+                if current_time - _STORAGE_FAILURES['last_reset'] > 300:
+                    _STORAGE_FAILURES['count'] = 1
+                    _STORAGE_FAILURES['last_reset'] = current_time
+
+                # If too many failures, stop processing
+                if _STORAGE_FAILURES['count'] >= 3:
+                    print(f"🛑 Circuit breaker: {_STORAGE_FAILURES['count']} storage failures - stopping batch")
+                    return {
+                        'success': False,
+                        'message': f'Circuit breaker activated after {_STORAGE_FAILURES["count"]} storage failures',
+                        'filings_processed': i-1,
+                        'successful_filings': successful_count,
+                        'results': results
+                    }
+
                 results.append({
                     'success': False,
                     'filing_id': filing_data['id'],

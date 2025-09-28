@@ -10,6 +10,13 @@ from .batch_processor import process_filings_batch
 from .analytics_reporter import generate_pipeline_analytics_report
 
 
+# Global state tracking to prevent infinite loops
+_PROCESSING_STATE = {
+    'currently_processing': set(),
+    'last_run_timestamp': None,
+    'run_count': 0
+}
+
 def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_storage,
                          semantic_storage, config: Dict, db_config: Dict = None) -> Dict:
     """Execute the complete SEC filing processing pipeline with comprehensive reporting
@@ -23,8 +30,26 @@ def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_stor
         db_config: Database configuration (optional, uses default if None)
     """
 
+    # Check for rapid successive calls (possible infinite loop)
+    import time
+    current_time = time.time()
+    _PROCESSING_STATE['run_count'] += 1
+
+    if (_PROCESSING_STATE['last_run_timestamp'] and
+        current_time - _PROCESSING_STATE['last_run_timestamp'] < 5):
+        print(f"⚠️ Warning: Pipeline called {_PROCESSING_STATE['run_count']} times in quick succession")
+        if _PROCESSING_STATE['run_count'] > 3:
+            print("🛑 Circuit breaker: Stopping pipeline to prevent infinite loop")
+            return {
+                'success': False,
+                'message': 'Circuit breaker activated - too many rapid calls',
+                'run_count': _PROCESSING_STATE['run_count']
+            }
+
+    _PROCESSING_STATE['last_run_timestamp'] = current_time
+
     print("="*80)
-    print("🚀 STARTING SEC FILING PROCESSING PIPELINE")
+    print(f"🚀 STARTING SEC FILING PROCESSING PIPELINE (Run #{_PROCESSING_STATE['run_count']})")
     print("="*80)
 
     # Display configuration

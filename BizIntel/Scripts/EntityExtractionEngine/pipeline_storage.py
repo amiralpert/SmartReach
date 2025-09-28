@@ -58,7 +58,7 @@ class PipelineEntityStorage:
                 # Batch insert (matching actual table schema)
                 insert_query = """
                     INSERT INTO system_uno.sec_entities_raw (
-                        extraction_id, company_domain, entity_text, entity_category,
+                        extraction_id, company_domain, entity_text, entity_type,
                         confidence_score, character_start, character_end, surrounding_text,
                         models_detected, all_confidences, primary_model, entity_variations,
                         is_merged, section_name, data_source, extraction_timestamp,
@@ -117,7 +117,7 @@ class PipelineEntityStorage:
             entity.get('extraction_id', str(uuid.uuid4())),
             entity.get('company_domain', ''),
             entity.get('entity_text', ''),
-            entity_type,  # entity_category
+            entity_type,  # entity_type
             float(entity.get('confidence_score', 0)),
             int(char_start),  # character_start
             int(char_end),    # character_end
