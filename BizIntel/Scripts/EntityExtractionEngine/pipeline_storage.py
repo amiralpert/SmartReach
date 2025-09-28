@@ -58,12 +58,11 @@ class PipelineEntityStorage:
                 # Batch insert (matching actual table schema)
                 insert_query = """
                     INSERT INTO system_uno.sec_entities_raw (
-                        extraction_id, company_domain, entity_text, entity_type,
-                        confidence_score, character_start, character_end, surrounding_context,
-                        models_detected, all_confidences, primary_model, entity_variations,
-                        is_merged, section_name, data_source, extraction_timestamp,
-                        original_label, quality_score, consensus_count,
-                        detecting_models, consensus_score, sec_filing_ref
+                        extraction_id, entity_text, canonical_name, entity_type,
+                        gliner_entity_id, accession_number, company_domain, filing_type,
+                        filing_date, section_name, character_start, character_end,
+                        surrounding_context, confidence_score, coreference_group,
+                        basic_relationships, extraction_timestamp, gliner_model_version
                     ) VALUES %s
                 """
                 
@@ -87,55 +86,41 @@ class PipelineEntityStorage:
             return False
     
     def _prepare_entity_record(self, entity: Dict, filing_ref: str) -> tuple:
-        """Prepare entity record for database insertion"""
+        """Prepare entity record for database insertion - aligned with GLiNER schema"""
         # Handle different possible field names for entity type
-        entity_type = (entity.get('entity_type') or 
-                      entity.get('entity_category') or 
+        entity_type = (entity.get('entity_type') or
+                      entity.get('entity_category') or
                       'UNKNOWN')
-        
+
         # Handle character positions
-        char_start = (entity.get('char_start') or 
+        char_start = (entity.get('char_start') or
                      entity.get('character_start') or 0)
-        char_end = (entity.get('char_end') or 
+        char_end = (entity.get('char_end') or
                    entity.get('character_end') or 0)
-        
-        # Handle PostgreSQL data types correctly
-        # models_detected is PostgreSQL ARRAY - let psycopg2 handle conversion
-        models_detected = entity.get('models_detected', [])
-        # Others are JSONB - convert to JSON strings
-        all_confidences = json.dumps(entity.get('all_confidences', {}))
-        entity_variations = json.dumps(entity.get('entity_variations', {}))
-        detecting_models = json.dumps(entity.get('detecting_models',
-                                               entity.get('models_detected', [])))
-        
-        # Calculate quality and consensus scores
-        quality_score = self._calculate_quality_score(entity)
-        consensus_count = len(entity.get('models_detected', []))
-        consensus_score = entity.get('consensus_score', entity.get('confidence_score', 0))
-        
+
+        # Prepare JSONB fields for GLiNER schema
+        coreference_group = json.dumps(entity.get('coreference_group', {}))
+        basic_relationships = json.dumps(entity.get('basic_relationships', []))
+
         return (
-            entity.get('extraction_id', str(uuid.uuid4())),
-            entity.get('company_domain', ''),
-            entity.get('entity_text', ''),
-            entity_type,  # entity_type
-            float(entity.get('confidence_score', 0)),
-            int(char_start),  # character_start
-            int(char_end),    # character_end
-            entity.get('surrounding_context', entity.get('surrounding_text', '')),
-            models_detected,
-            all_confidences,
-            entity.get('primary_model', entity.get('model_source', '')),
-            entity_variations,
-            bool(entity.get('is_merged', False)),
-            entity.get('section_name', ''),
-            entity.get('data_source', 'sec_filings'),
-            entity.get('extraction_timestamp', datetime.now()),
-            entity.get('original_label', ''),
-            quality_score,
-            consensus_count,
-            detecting_models,
-            float(consensus_score),
-            filing_ref  # sec_filing_ref
+            entity.get('extraction_id', str(uuid.uuid4())),  # extraction_id
+            entity.get('entity_text', ''),                   # entity_text
+            entity.get('canonical_name', ''),                # canonical_name
+            entity_type,                                      # entity_type
+            entity.get('gliner_entity_id', ''),             # gliner_entity_id
+            entity.get('accession_number', ''),             # accession_number
+            entity.get('company_domain', ''),               # company_domain
+            entity.get('filing_type', ''),                  # filing_type
+            entity.get('filing_date'),                      # filing_date
+            entity.get('section_name', ''),                 # section_name
+            int(char_start),                                # character_start
+            int(char_end),                                  # character_end
+            entity.get('surrounding_context', entity.get('surrounding_text', '')), # surrounding_context
+            float(entity.get('confidence_score', 0)),       # confidence_score
+            coreference_group,                              # coreference_group (JSONB)
+            basic_relationships,                            # basic_relationships (JSONB)
+            entity.get('extraction_timestamp', datetime.now()), # extraction_timestamp
+            entity.get('gliner_model_version', 'gliner_medium-v2.1') # gliner_model_version
         )
     
     def _calculate_quality_score(self, entity: Dict) -> float:
