@@ -9,9 +9,9 @@ SEC_FILINGS_PROMPT = """Analyze business relationships for these entities.
 ENTITIES:
 {entities_text}
 
-For EACH entity, return JSON:
+For EACH entity, return JSON using entity IDs as keys:
 {{
-  "entity_1": {{
+  "E001": {{
     "relationship_type": "<PARTNERSHIP|COMPETITOR|REGULATORY|ACQUISITION|LICENSING|NONE>",
     "semantic_action": "<initiated|expanded|terminated|ongoing>",
     "semantic_impact": "<positive|negative|neutral>",
@@ -20,7 +20,7 @@ For EACH entity, return JSON:
     "business_impact_summary": "<brief_impact_analysis>",
     "regulatory_implications": "<regulatory_impact_or_none>"
   }},
-  "entity_2": {{ ... }}
+  "E002": {{ ... }}
 }}
 
 Return valid JSON only."""

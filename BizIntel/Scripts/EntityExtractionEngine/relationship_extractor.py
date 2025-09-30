@@ -140,8 +140,9 @@ class RelationshipExtractor:
             entities_text = ""
             for i, (entity, context, section_name) in enumerate(entities_batch, 1):
                 company_domain = entity.get("company_domain", "Unknown")
+                entity_id = entity.get("entity_id", f"E{i:03d}")  # Use actual entity ID
                 entities_text += f"""
-Entity {i}:
+Entity {entity_id}:
 - Company: {company_domain}
 - Entity: {entity["entity_text"]} (Type: {entity.get("entity_category", "UNKNOWN")})
 - Section: {section_name}
@@ -206,30 +207,31 @@ Entity {i}:
             json_str = response[json_start:json_end]
             llama_data = json.loads(json_str)
             
-            # Map entities by index
-            entity_map = {f"entity_{i+1}": entities_batch[i][0] for i in range(len(entities_batch))}
+            # Map entities by their actual entity IDs
+            entity_map = {}
+            for entity, context, section in entities_batch:
+                entity_id = entity.get("entity_id")
+                if entity_id:
+                    entity_map[entity_id] = entity
             
             # Process each entity's analysis
-            for entity_key, analysis in llama_data.items():
-                if entity_key not in entity_map:
+            for entity_id, analysis in llama_data.items():
+                if entity_id not in entity_map:
                     continue
-                
-                entity = entity_map[entity_key]
+
+                entity = entity_map[entity_id]
                 
                 # Skip if no meaningful relationship
                 if analysis.get('relationship_type') in ['NONE', None, '']:
                     continue
                 
-                # Create relationship record (simplified for new schema, no company_domain)
+                # Create relationship record using entity ID for lookup
                 relationship = {
                     'relationship_id': str(uuid.uuid4()),
-                    'entity_extraction_id': entity.get('extraction_id'),
+                    'entity_extraction_id': entity_id,  # Use entity ID as reference
                     'entity_text': entity.get('entity_text'),
-                    'source_ref': entity.get('sec_filing_ref'),  # Renamed from sec_filing_ref
-                    'source_date': entity.get('filing_date'),    # Added for new schema
-                    'source_type': entity.get('filing_type'),    # Added for new schema
 
-                    # Llama analysis results (simplified)
+                    # Llama analysis results
                     'relationship_type': analysis.get('relationship_type'),
                     'semantic_action': analysis.get('semantic_action'),
                     'semantic_impact': analysis.get('semantic_impact'),

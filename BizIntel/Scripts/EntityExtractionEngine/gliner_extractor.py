@@ -414,7 +414,8 @@ class GLiNEREntityExtractor:
                         'end_position': mention['end'],
                         'confidence_score': mention['score'],
                         'canonical_name': entity.get('canonical_name', mention['text']),
-                        'gliner_entity_id': entity.get('entity_id', f"E{mention.get('start', 0):06d}"),
+                        'entity_id': entity.get('entity_id'),  # Normalized entity ID (E001, E002, etc.)
+                        'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': entity.get('coreference_group', {}),
                         'basic_relationships': [r for r in relationships
                                               if r['head_entity'] == mention['text'] or
