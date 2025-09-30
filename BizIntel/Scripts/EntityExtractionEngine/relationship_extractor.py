@@ -264,52 +264,6 @@ Entity {entity_id}:
             print(f"         ⚠️ Response parsing failed: {e}")
             return []
     
-    def _parse_llama_response(self, response: str, entity: Dict) -> Optional[Dict]:
-        """Parse single entity Llama response"""
-        try:
-            # Extract JSON from response
-            json_start = response.find('{')
-            json_end = response.rfind('}') + 1
-            
-            if json_start == -1 or json_end == 0:
-                return None
-            
-            json_str = response[json_start:json_end]
-            analysis = json.loads(json_str)
-            
-            # Skip if no meaningful relationship
-            if analysis.get('relationship_type') in ['NONE', None, '']:
-                return None
-            
-            return {
-                'relationship_id': str(uuid.uuid4()),
-                'entity_extraction_id': entity.get('entity_id'),
-                'company_domain': entity.get('company_domain'),
-                'entity_text': entity.get('entity_text'),
-                'sec_filing_ref': entity.get('sec_filing_ref'),
-                'relationship_type': analysis.get('relationship_type'),
-                'semantic_action': analysis.get('semantic_action'),
-                'semantic_impact': analysis.get('semantic_impact'),
-                'semantic_tags': analysis.get('semantic_tags', []),
-                'monetary_value': analysis.get('monetary_value'),
-                'percentage_value': analysis.get('percentage_value'),
-                'duration_months': analysis.get('duration_months'),
-                'entity_count': analysis.get('entity_count'),
-                'mentioned_time_period': analysis.get('mentioned_time_period'),
-                'temporal_precision': analysis.get('temporal_precision'),
-                'confidence_level': analysis.get('confidence_level'),
-                'summary': analysis.get('summary'),
-                'business_impact_summary': analysis.get('business_impact_summary'),
-                'regulatory_implications': analysis.get('regulatory_implications'),
-                'competitive_implications': analysis.get('competitive_implications'),
-                'extraction_timestamp': datetime.now(),
-                'llama_model': self.config['llama']['model_name'],
-                'section_name': entity.get('section_name')
-            }
-            
-        except Exception as e:
-            print(f"         ⚠️ Failed to parse Llama response: {e}")
-            return None
     
     def get_relationship_stats(self) -> Dict:
         """Get relationship extraction statistics"""
