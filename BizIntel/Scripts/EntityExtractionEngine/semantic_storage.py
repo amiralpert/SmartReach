@@ -52,14 +52,6 @@ class SemanticRelationshipStorage:
 
                 for relationship in relationships:
                     try:
-                        # Ensure relationship has required fields from filing_data
-                        if 'source_ref' not in relationship:
-                            relationship['source_ref'] = filing_ref
-                        if 'source_date' not in relationship:
-                            relationship['source_date'] = filing_data.get('filing_date')
-                        if 'source_type' not in relationship:
-                            relationship['source_type'] = filing_data.get('filing_type')
-
                         # Find or create semantic bucket
                         bucket_id = self._find_or_create_bucket(
                             conn, relationship, session_id
@@ -132,25 +124,17 @@ class SemanticRelationshipStorage:
         if not isinstance(semantic_tags, list):
             semantic_tags = []
 
-        # Handle required fields with defaults
-        from datetime import date
-        source_date = relationship.get('source_date') or date.today()
-        source_ref = relationship.get('source_ref', 'unknown')
-
         cursor.execute("""
             INSERT INTO system_uno.relationship_semantic_events (
-                bucket_id, source_entity_id, source_ref, source_date,
-                source_type, semantic_summary, semantic_action,
+                bucket_id, source_entity_id, semantic_summary, semantic_action,
                 semantic_impact, semantic_tags,
                 business_impact_summary, regulatory_implications,
                 original_context_snippet,
                 character_position_start, character_position_end,
                 llama_prompt_version, event_timestamp
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             bucket_id, relationship.get('source_entity_id'),
-            source_ref, source_date,
-            relationship.get('source_type'),
             relationship.get('summary', ''),
             relationship.get('semantic_action'), relationship.get('semantic_impact'),
             semantic_tags,
