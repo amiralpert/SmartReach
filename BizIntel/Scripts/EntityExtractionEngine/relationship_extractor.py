@@ -220,11 +220,10 @@ Entity {i}:
                 if analysis.get('relationship_type') in ['NONE', None, '']:
                     continue
                 
-                # Create relationship record (simplified for new schema)
+                # Create relationship record (simplified for new schema, no company_domain)
                 relationship = {
                     'relationship_id': str(uuid.uuid4()),
                     'entity_extraction_id': entity.get('extraction_id'),
-                    'company_domain': entity.get('company_domain'),
                     'entity_text': entity.get('entity_text'),
                     'source_ref': entity.get('sec_filing_ref'),  # Renamed from sec_filing_ref
                     'source_date': entity.get('filing_date'),    # Added for new schema

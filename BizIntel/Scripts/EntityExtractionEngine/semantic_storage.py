@@ -44,8 +44,7 @@ class SemanticRelationshipStorage:
 
                 print(f"   📦 Storing {len(relationships)} relationships with semantic buckets...")
 
-                # Extract company domain and filing_ref from filing_data
-                company_domain = filing_data.get('company_domain', 'unknown')
+                # Extract filing_ref from filing_data
                 filing_ref = f"SEC_{filing_data.get('id', 'UNKNOWN')}"
 
                 # Create analysis session
@@ -54,8 +53,6 @@ class SemanticRelationshipStorage:
                 for relationship in relationships:
                     try:
                         # Ensure relationship has required fields from filing_data
-                        if 'company_domain' not in relationship:
-                            relationship['company_domain'] = company_domain
                         if 'source_ref' not in relationship:
                             relationship['source_ref'] = filing_ref
                         if 'source_date' not in relationship:
@@ -95,15 +92,14 @@ class SemanticRelationshipStorage:
         """Find existing bucket or create new one for relationship type"""
         cursor = conn.cursor()
 
-        company_domain = relationship.get('company_domain', 'unknown')
         entity_name = relationship.get('entity_text', 'unknown')
         relationship_type = relationship.get('relationship_type', 'UNKNOWN')
 
-        # Check for existing bucket
+        # Check for existing bucket (no company_domain needed)
         cursor.execute("""
             SELECT bucket_id FROM system_uno.relationship_buckets
-            WHERE company_domain = %s AND entity_name = %s AND relationship_type = %s
-        """, (company_domain, entity_name, relationship_type))
+            WHERE entity_name = %s AND relationship_type = %s
+        """, (entity_name, relationship_type))
 
         result = cursor.fetchone()
         if result:
@@ -111,16 +107,16 @@ class SemanticRelationshipStorage:
 
         # Create new bucket
         from datetime import date
-        filing_date = relationship.get('filing_date') or date.today()
+        filing_date = relationship.get('source_date') or relationship.get('filing_date') or date.today()
 
         bucket_id = str(uuid.uuid4())
         cursor.execute("""
             INSERT INTO system_uno.relationship_buckets (
-                bucket_id, company_domain, entity_name, relationship_type,
+                bucket_id, entity_name, relationship_type,
                 first_mentioned_date, last_mentioned_date, total_mentions
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         """, (
-            bucket_id, company_domain, entity_name, relationship_type,
+            bucket_id, entity_name, relationship_type,
             filing_date, filing_date, 1
         ))
 
@@ -194,15 +190,13 @@ class SemanticRelationshipStorage:
         cursor = conn.cursor()
         session_id = str(uuid.uuid4())
 
-        # Extract company domain from filing_ref if available
-        company_domain = filing_ref.replace('SEC_', '') if filing_ref.startswith('SEC_') else 'unknown'
-
+        # Use 'analysis' as a generic domain for all analysis sessions
         cursor.execute("""
             INSERT INTO system_uno.semantic_analysis_sessions (
                 session_id, company_domain, filing_batch, entities_processed,
                 events_created, session_status
             ) VALUES (%s, %s, %s, %s, %s, %s)
-        """, (session_id, company_domain, [filing_ref], 0, relationship_count, 'RUNNING'))
+        """, (session_id, 'analysis', [filing_ref], 0, relationship_count, 'RUNNING'))
 
         return session_id
     
