@@ -405,14 +405,16 @@ class GLiNEREntityExtractor:
             # Format for database storage
             results = []
             for entity in normalized_entities:
-                for mention in entity.get('mentions', [entity]):
-                    # Validate and ensure entity_id exists
-                    entity_id = entity.get('entity_id')
-                    if not entity_id:
-                        if self.debug:
-                            print(f"⚠️ Warning: Missing entity_id for entity '{entity.get('canonical_name', 'unknown')}', generating UUID fallback")
-                        entity_id = str(uuid.uuid4())  # Generate fallback UUID
+                # Get normalized entity group ID for tracking
+                normalized_group_id = entity.get('entity_id')
 
+                for mention in entity.get('mentions', [entity]):
+                    # Build coreference group with normalized entity ID
+                    coreference_data = entity.get('coreference_group', {})
+                    if normalized_group_id:
+                        coreference_data['normalized_entity_id'] = normalized_group_id
+
+                    # Each database record needs its own unique entity_id
                     entity_record = {
                         'accession_number': filing_context.get('accession', ''),
                         'section_type': filing_context.get('section', ''),
@@ -422,9 +424,9 @@ class GLiNEREntityExtractor:
                         'end_position': mention['end'],
                         'confidence_score': mention['score'],
                         'canonical_name': entity.get('canonical_name', mention['text']),
-                        'entity_id': entity_id,  # Validated normalized entity ID (UUID format)
+                        'entity_id': str(uuid.uuid4()),  # Unique ID for each database row
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
-                        'coreference_group': entity.get('coreference_group', {}),
+                        'coreference_group': coreference_data,  # Includes normalized_entity_id
                         'basic_relationships': [r for r in relationships
                                               if r['head_entity'] == mention['text'] or
                                                  r['tail_entity'] == mention['text']],

@@ -140,7 +140,21 @@ class RelationshipExtractor:
             entities_text = ""
             for i, (entity, context, section_name) in enumerate(entities_batch, 1):
                 company_domain = entity.get("company_domain", "Unknown")
-                entity_id = entity.get("entity_id", f"E{i:03d}")  # Use actual entity ID
+
+                # Get normalized entity ID from coreference group if available
+                coreference_group = entity.get("coreference_group", {})
+                if isinstance(coreference_group, str):
+                    # Parse JSON if it's a string
+                    try:
+                        import json
+                        coreference_group = json.loads(coreference_group)
+                    except:
+                        coreference_group = {}
+
+                # Use normalized_entity_id for grouping, fallback to entity_id
+                normalized_id = coreference_group.get("normalized_entity_id")
+                entity_id = normalized_id if normalized_id else entity.get("entity_id", f"E{i:03d}")
+
                 entities_text += f"""
 Entity {entity_id}:
 - Company: {company_domain}
@@ -207,10 +221,21 @@ Entity {entity_id}:
             json_str = response[json_start:json_end]
             llama_data = json.loads(json_str)
             
-            # Map entities by their actual entity IDs
+            # Map entities by their normalized entity IDs
             entity_map = {}
             for entity, context, section in entities_batch:
-                entity_id = entity.get("entity_id")
+                # Get normalized entity ID from coreference group if available
+                coreference_group = entity.get("coreference_group", {})
+                if isinstance(coreference_group, str):
+                    try:
+                        coreference_group = json.loads(coreference_group)
+                    except:
+                        coreference_group = {}
+
+                # Use normalized_entity_id for mapping, fallback to entity_id
+                normalized_id = coreference_group.get("normalized_entity_id")
+                entity_id = normalized_id if normalized_id else entity.get("entity_id")
+
                 if entity_id:
                     entity_map[entity_id] = entity
             
