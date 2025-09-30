@@ -226,16 +226,16 @@ Entity {entity_id}:
                     continue
                 
                 # Validate required entity data before creating relationship
-                entity_extraction_id = entity.get('extraction_id')
-                if not entity_extraction_id:
-                    print(f"      ⚠️ Skipping relationship for entity {entity_id} - missing extraction_id")
+                entity_db_id = entity.get('entity_id')
+                if not entity_db_id:
+                    print(f"      ⚠️ Skipping relationship for entity {entity_id} - missing entity_id")
                     continue
 
                 # Create relationship record using proper database references
                 relationship = {
                     'relationship_id': str(uuid.uuid4()),
-                    'entity_extraction_id': entity_extraction_id,  # Use actual DB primary key
-                    'source_entity_id': entity_extraction_id,  # For semantic storage compatibility
+                    'entity_extraction_id': entity_db_id,  # Use entity_id as DB primary key
+                    'source_entity_id': entity_db_id,  # For semantic storage compatibility
                     'entity_reference_id': entity_id,  # Store entity ID for tracking/debugging
                     'entity_text': entity.get('entity_text'),
 
@@ -283,7 +283,7 @@ Entity {entity_id}:
             
             return {
                 'relationship_id': str(uuid.uuid4()),
-                'entity_extraction_id': entity.get('extraction_id'),
+                'entity_extraction_id': entity.get('entity_id'),
                 'company_domain': entity.get('company_domain'),
                 'entity_text': entity.get('entity_text'),
                 'sec_filing_ref': entity.get('sec_filing_ref'),

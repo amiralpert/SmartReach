@@ -6,6 +6,7 @@ Groups variations like "Freenom" and "Freenom Corporation"
 from typing import List, Dict, Set, Tuple, Optional
 from difflib import SequenceMatcher
 import re
+import uuid
 
 
 def normalize_entities(entities: List[Dict], filing_context: Dict,
@@ -33,20 +34,19 @@ def normalize_entities(entities: List[Dict], filing_context: Dict,
         grouped_by_label[label].append(entity)
 
     normalized = []
-    entity_id_counter = 1
 
     for label, label_entities in grouped_by_label.items():
         if label == "Filing Company" and normalization_config.get('merge_filing_company_mentions', True):
             # All filing company mentions are the same entity
             canonical = get_canonical_filing_name(label_entities, filing_context)
             normalized.append({
-                "entity_id": f"E{entity_id_counter:03d}",
+                "entity_id": str(uuid.uuid4()),
                 "canonical_name": canonical,
                 "label": label,
                 "mentions": label_entities,
                 "confidence": max(e.get('score', 0) for e in label_entities)
             })
-            entity_id_counter += 1
+
 
         elif label in ["Private Company", "Government Agency", "Organization"] and \
              normalization_config.get('group_similar_names', True):
@@ -59,25 +59,23 @@ def normalize_entities(entities: List[Dict], filing_context: Dict,
 
             for group in groups:
                 normalized.append({
-                    "entity_id": f"E{entity_id_counter:03d}",
+                    "entity_id": str(uuid.uuid4()),
                     "canonical_name": group['canonical_name'],
                     "label": label,
                     "mentions": group['mentions'],
                     "confidence": group['confidence']
                 })
-                entity_id_counter += 1
 
         else:
             # Other entities pass through without grouping
             for entity in label_entities:
                 normalized.append({
-                    "entity_id": f"E{entity_id_counter:03d}",
+                    "entity_id": str(uuid.uuid4()),
                     "canonical_name": entity.get('text', ''),
                     "label": label,
                     "mentions": [entity],
                     "confidence": entity.get('score', 0)
                 })
-                entity_id_counter += 1
 
     return normalized
 

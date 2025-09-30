@@ -239,7 +239,7 @@ class EntityExtractionPipeline:
                     continue
 
                 filtered_entities.append({
-                    'extraction_id': str(uuid.uuid4()),
+                    'entity_id': str(uuid.uuid4()),
                     'company_domain': section_result['company_domain'],
                     'entity_text': entity_text,
                     'entity_category': self._normalize_entity_type(entity_category),
