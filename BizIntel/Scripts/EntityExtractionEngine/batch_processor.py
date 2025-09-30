@@ -123,10 +123,10 @@ def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_stor
             if config['processing']['enable_relationships']:
                 relationships = relationship_extractor.extract_company_relationships(entities)
                 
-                # Store relationships
+                # Store relationships (pass full filing_data for company_domain)
                 if relationships:
                     relationship_storage_success = semantic_storage.store_relationships_with_buckets(
-                        relationships, filing_ref
+                        relationships, filing_data
                     )
                     if not relationship_storage_success:
                         print("   ⚠️ Relationship storage failed")

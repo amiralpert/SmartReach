@@ -22,11 +22,11 @@ class SemanticRelationshipStorage:
             'storage_errors': 0
         }
     
-    def store_relationships_with_buckets(self, relationships: List[Dict], filing_ref: str) -> bool:
+    def store_relationships_with_buckets(self, relationships: List[Dict], filing_data: Dict) -> bool:
         """Store relationships with semantic bucketing"""
         if not relationships:
             return True
-        
+
         try:
             import psycopg2
             from kaggle_secrets import UserSecretsClient
@@ -41,20 +41,27 @@ class SemanticRelationshipStorage:
                 sslmode='require'
             ) as conn:
                 cursor = conn.cursor()
-                
+
                 print(f"   📦 Storing {len(relationships)} relationships with semantic buckets...")
-                
-                # Extract company domain from filing_ref
-                company_domain = filing_ref.replace('SEC_', '') if filing_ref.startswith('SEC_') else 'unknown'
+
+                # Extract company domain and filing_ref from filing_data
+                company_domain = filing_data.get('company_domain', 'unknown')
+                filing_ref = f"SEC_{filing_data.get('id', 'UNKNOWN')}"
 
                 # Create analysis session
                 session_id = self.create_analysis_session(conn, filing_ref, len(relationships))
 
                 for relationship in relationships:
                     try:
-                        # Ensure relationship has company_domain
+                        # Ensure relationship has required fields from filing_data
                         if 'company_domain' not in relationship:
                             relationship['company_domain'] = company_domain
+                        if 'source_ref' not in relationship:
+                            relationship['source_ref'] = filing_ref
+                        if 'source_date' not in relationship:
+                            relationship['source_date'] = filing_data.get('filing_date')
+                        if 'source_type' not in relationship:
+                            relationship['source_type'] = filing_data.get('filing_type')
 
                         # Find or create semantic bucket
                         bucket_id = self._find_or_create_bucket(
@@ -131,34 +138,33 @@ class SemanticRelationshipStorage:
 
         # Handle required fields with defaults
         from datetime import date
-        filing_date = relationship.get('filing_date') or date.today()
-        sec_filing_ref = relationship.get('sec_filing_ref', 'unknown')
+        source_date = relationship.get('source_date') or date.today()
+        source_ref = relationship.get('source_ref', 'unknown')
 
         cursor.execute("""
             INSERT INTO system_uno.relationship_semantic_events (
-                bucket_id, source_entity_id, sec_filing_ref, filing_date,
-                filing_type, section_name, semantic_summary, semantic_action,
-                semantic_impact, semantic_tags, monetary_value, percentage_value,
-                duration_months, entity_count, mentioned_time_period,
-                temporal_precision, business_impact_summary, regulatory_implications,
-                competitive_implications, original_context_snippet,
-                character_position_start, character_position_end, confidence_score
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                bucket_id, source_entity_id, source_ref, source_date,
+                source_type, semantic_summary, semantic_action,
+                semantic_impact, semantic_tags,
+                business_impact_summary, regulatory_implications,
+                original_context_snippet,
+                character_position_start, character_position_end,
+                llama_prompt_version, event_timestamp
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             bucket_id, relationship.get('source_entity_id'),
-            sec_filing_ref, filing_date,
-            relationship.get('filing_type'), relationship.get('section_name'),
-            relationship.get('summary', relationship.get('semantic_summary', '')),
+            source_ref, source_date,
+            relationship.get('source_type'),
+            relationship.get('summary', ''),
             relationship.get('semantic_action'), relationship.get('semantic_impact'),
-            semantic_tags, relationship.get('monetary_value'),
-            relationship.get('percentage_value'), relationship.get('duration_months'),
-            relationship.get('entity_count'), relationship.get('mentioned_time_period'),
-            relationship.get('temporal_precision'), relationship.get('business_impact_summary'),
-            relationship.get('regulatory_implications'), relationship.get('competitive_implications'),
+            semantic_tags,
+            relationship.get('business_impact_summary'),
+            relationship.get('regulatory_implications'),
             relationship.get('original_context_snippet', relationship.get('context', '')),
             relationship.get('character_position_start', relationship.get('char_start')),
             relationship.get('character_position_end', relationship.get('char_end')),
-            float(relationship.get('confidence_score', 0.5))
+            '2.0',  # Simplified prompt version
+            datetime.now()
         ))
 
         self.storage_stats['events_stored'] += 1
@@ -167,7 +173,7 @@ class SemanticRelationshipStorage:
         """Update bucket-level aggregations"""
         cursor = conn.cursor()
 
-        # Update bucket with latest metrics
+        # Update bucket with latest metrics (simplified for new schema)
         cursor.execute("""
             UPDATE system_uno.relationship_buckets
             SET
@@ -175,21 +181,13 @@ class SemanticRelationshipStorage:
                     SELECT COUNT(*) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s
                 ),
-                avg_confidence_score = (
-                    SELECT AVG(confidence_score) FROM system_uno.relationship_semantic_events
-                    WHERE bucket_id = %s
-                ),
-                total_monetary_value = (
-                    SELECT SUM(monetary_value) FROM system_uno.relationship_semantic_events
-                    WHERE bucket_id = %s AND monetary_value IS NOT NULL
-                ),
                 last_mentioned_date = (
-                    SELECT MAX(filing_date) FROM system_uno.relationship_semantic_events
+                    SELECT MAX(source_date) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s
                 ),
                 updated_at = %s
             WHERE bucket_id = %s
-        """, (bucket_id, bucket_id, bucket_id, bucket_id, datetime.now(), bucket_id))
+        """, (bucket_id, bucket_id, datetime.now(), bucket_id))
     
     def create_analysis_session(self, conn, filing_ref: str, relationship_count: int) -> str:
         """Create analysis session for tracking using existing semantic_analysis_sessions table"""

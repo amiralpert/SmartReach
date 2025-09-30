@@ -220,35 +220,28 @@ Entity {i}:
                 if analysis.get('relationship_type') in ['NONE', None, '']:
                     continue
                 
-                # Create relationship record
+                # Create relationship record (simplified for new schema)
                 relationship = {
                     'relationship_id': str(uuid.uuid4()),
                     'entity_extraction_id': entity.get('extraction_id'),
                     'company_domain': entity.get('company_domain'),
                     'entity_text': entity.get('entity_text'),
-                    'sec_filing_ref': entity.get('sec_filing_ref'),
-                    
-                    # Llama analysis results
+                    'source_ref': entity.get('sec_filing_ref'),  # Renamed from sec_filing_ref
+                    'source_date': entity.get('filing_date'),    # Added for new schema
+                    'source_type': entity.get('filing_type'),    # Added for new schema
+
+                    # Llama analysis results (simplified)
                     'relationship_type': analysis.get('relationship_type'),
                     'semantic_action': analysis.get('semantic_action'),
                     'semantic_impact': analysis.get('semantic_impact'),
                     'semantic_tags': analysis.get('semantic_tags', []),
-                    'monetary_value': analysis.get('monetary_value'),
-                    'percentage_value': analysis.get('percentage_value'),
-                    'duration_months': analysis.get('duration_months'),
-                    'entity_count': analysis.get('entity_count'),
-                    'mentioned_time_period': analysis.get('mentioned_time_period'),
-                    'temporal_precision': analysis.get('temporal_precision'),
-                    'confidence_level': analysis.get('confidence_level'),
                     'summary': analysis.get('summary'),
                     'business_impact_summary': analysis.get('business_impact_summary'),
                     'regulatory_implications': analysis.get('regulatory_implications'),
-                    'competitive_implications': analysis.get('competitive_implications'),
-                    
+
                     # Metadata
                     'extraction_timestamp': datetime.now(),
-                    'llama_model': self.config['llama']['model_name'],
-                    'section_name': entity.get('section_name')
+                    'llama_model': self.config['llama']['model_name']
                 }
                 
                 relationships.append(relationship)
