@@ -198,13 +198,13 @@ class GLiNERTestRunner:
                 'password': user_secrets.get_secret("NEON_PASSWORD")
             }
         except ImportError:
-            # For local testing
-            from .local_secrets import SECRETS
+            # For local testing - use environment variables
+            import os
             return {
-                'host': SECRETS.get("NEON_HOST"),
-                'database': SECRETS.get("NEON_DATABASE"),
-                'user': SECRETS.get("NEON_USER"),
-                'password': SECRETS.get("NEON_PASSWORD")
+                'host': os.environ.get("NEON_HOST"),
+                'database': os.environ.get("NEON_DATABASE"),
+                'user': os.environ.get("NEON_USER"),
+                'password': os.environ.get("NEON_PASSWORD")
             }
 
     def _get_pipeline_config(self) -> Dict:
