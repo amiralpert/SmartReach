@@ -99,7 +99,7 @@ class SemanticRelationshipStorage:
 
         # Create new bucket
         from datetime import date
-        filing_date = relationship.get('source_date') or relationship.get('filing_date') or date.today()
+        filing_date = relationship.get('filing_date') or date.today()
 
         bucket_id = str(uuid.uuid4())
         cursor.execute("""
@@ -162,7 +162,7 @@ class SemanticRelationshipStorage:
                     WHERE bucket_id = %s
                 ),
                 last_mentioned_date = (
-                    SELECT MAX(source_date) FROM system_uno.relationship_semantic_events
+                    SELECT MAX(event_timestamp::date) FROM system_uno.relationship_semantic_events
                     WHERE bucket_id = %s
                 ),
                 updated_at = %s
