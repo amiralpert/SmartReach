@@ -63,7 +63,8 @@ class GLiNEREntityExtractor:
     """Enhanced GLiNER-based entity and relationship extraction with built-in normalization"""
 
     def __init__(self, model_size: str = None, labels: List[str] = None,
-                 threshold: float = None, enable_relationships: bool = True, debug: bool = False):
+                 threshold: float = None, enable_relationships: bool = True, debug: bool = False,
+                 cached_model=None):
         """
         Initialize GLiNER and GLiREL models
 
@@ -73,6 +74,7 @@ class GLiNEREntityExtractor:
             threshold: Confidence threshold (defaults to config)
             enable_relationships: Whether to load GLiREL for relationship extraction
             debug: Enable debug output
+            cached_model: Pre-loaded GLiNER model instance (for model-only persistence)
         """
         if not GLINER_AVAILABLE:
             raise ImportError("GLiNER is not installed. Install with: pip install gliner")
@@ -91,13 +93,17 @@ class GLiNEREntityExtractor:
             'large': 'urchade/gliner_large-v2.1'
         }
 
-        # Load GLiNER entity model
-        self.model_name = model_map.get(self.model_size, model_map['medium'])
-
-        if self.debug:
-            print(f"Loading GLiNER entity model: {self.model_name}")
-
-        self.entity_model = GLiNER.from_pretrained(self.model_name)
+        # Load GLiNER entity model (use cached model if provided)
+        if cached_model is not None:
+            if self.debug:
+                print(f"Using cached GLiNER model (model-only persistence)")
+            self.entity_model = cached_model
+            self.model_name = getattr(cached_model, 'name_or_path', 'cached_model')
+        else:
+            self.model_name = model_map.get(self.model_size, model_map['medium'])
+            if self.debug:
+                print(f"Loading fresh GLiNER entity model: {self.model_name}")
+            self.entity_model = GLiNER.from_pretrained(self.model_name)
 
         # Load GLiREL relationship model if enabled
         self.relation_model = None
