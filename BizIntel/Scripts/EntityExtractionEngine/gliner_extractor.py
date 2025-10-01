@@ -426,8 +426,8 @@ class GLiNEREntityExtractor:
                         'section_type': filing_context.get('section', ''),
                         'entity_text': mention['text'],
                         'entity_type': mention['label'],
-                        'start_position': mention['start'],
-                        'end_position': mention['end'],
+                        'char_start': mention['start'],
+                        'char_end': mention['end'],
                         'confidence_score': mention['score'],
                         'canonical_name': entity.get('canonical_name', mention['text']),
                         'entity_id': str(uuid.uuid4()),  # Unique ID for each database row
