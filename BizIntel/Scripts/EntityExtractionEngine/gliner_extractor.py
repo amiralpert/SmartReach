@@ -414,6 +414,12 @@ class GLiNEREntityExtractor:
                     if normalized_group_id:
                         coreference_data['normalized_entity_id'] = normalized_group_id
 
+                    # Extract surrounding context for this mention
+                    window_size = 200  # characters before and after
+                    text_start = max(0, mention['start'] - window_size)
+                    text_end = min(len(text), mention['end'] + window_size)
+                    surrounding_text = text[text_start:text_end]
+
                     # Each database record needs its own unique entity_id
                     entity_record = {
                         'accession_number': filing_context.get('accession', ''),
@@ -427,6 +433,7 @@ class GLiNEREntityExtractor:
                         'entity_id': str(uuid.uuid4()),  # Unique ID for each database row
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': coreference_data,  # Includes normalized_entity_id
+                        'surrounding_text': surrounding_text,  # Add context window around entity
                         'basic_relationships': [r for r in relationships
                                               if r['head_entity'] == mention['text'] or
                                                  r['tail_entity'] == mention['text']],
