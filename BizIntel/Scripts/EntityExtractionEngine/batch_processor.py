@@ -121,6 +121,7 @@ def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_stor
             # Step 3: Extract relationships if enabled
             relationships = []
             if config['processing']['enable_relationships']:
+                print(f"   🦙 Calling Llama relationship extractor with {len(entities)} entities...")
                 relationships = relationship_extractor.extract_company_relationships(entities)
                 
                 # Store relationships (pass full filing_data for company_domain)

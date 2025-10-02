@@ -89,9 +89,13 @@ class RelationshipExtractor:
         
         if not entities:
             return []
-        
+
         print(f"   🔍 Analyzing relationships for {len(entities)} entities...")
-        
+
+        # Debug: Show entity field structure
+        if entities:
+            print(f"   📝 Entity sample fields: {list(entities[0].keys())}")
+
         relationships = []
         batch_size = self.config['llama']['batch_size']
         
@@ -118,16 +122,16 @@ class RelationshipExtractor:
     
     def _get_entity_context(self, entity: Dict) -> str:
         """Get surrounding context for an entity"""
-        context = entity.get('surrounding_text', '')
+        context = entity.get('surrounding_context', '')
         if not context:
             # Fallback to just the entity text
             context = f"Entity: {entity.get('entity_text', 'Unknown')}"
-        
+
         # Limit context to configured window
         max_chars = self.config['llama']['context_window']
         if len(context) > max_chars:
             context = context[:max_chars]
-        
+
         return context
     
     def _analyze_relationship_batch(self, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
