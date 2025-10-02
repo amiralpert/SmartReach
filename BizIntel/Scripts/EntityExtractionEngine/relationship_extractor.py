@@ -195,13 +195,18 @@ Entity {entity_id}:
             
             # Decode response
             llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
+
             # Extract just the assistant's response
             if "assistant" in llama_response:
                 llama_response = llama_response.split("assistant")[-1].strip()
-            
+
             self.stats['llama_calls'] += 1
-            
+
+            # Optional: Log raw response for debugging (first 300 chars)
+            if self.config.get('llama', {}).get('debug_responses', False):
+                response_preview = llama_response[:300] if len(llama_response) > 300 else llama_response
+                print(f"         🔍 Llama response preview: {response_preview}...")
+
             # Parse JSON response
             return self._parse_batch_llama_response(llama_response, entities_batch)
             
@@ -212,18 +217,45 @@ Entity {entity_id}:
     def _parse_batch_llama_response(self, response: str, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
         """Parse Llama batch response into relationship records"""
         relationships = []
-        
+
         try:
             # Find JSON in response
             json_start = response.find('{')
             json_end = response.rfind('}') + 1
-            
+
             if json_start == -1 or json_end == 0:
                 print(f"         ⚠️ No JSON found in Llama response")
                 return []
-            
+
             json_str = response[json_start:json_end]
-            llama_data = json.loads(json_str)
+
+            # Try to parse as-is first
+            try:
+                llama_data = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                print(f"         ⚠️ JSON parsing failed: {e}")
+                print(f"         🔧 Attempting to repair JSON...")
+
+                # Common fixes for Llama JSON errors
+                repaired = json_str
+
+                # Fix 1: Remove trailing commas before closing braces
+                repaired = repaired.replace(',}', '}').replace(',]', ']')
+
+                # Fix 2: Ensure proper comma placement between entries (common missing comma issue)
+                # This is tricky - try to detect }{ patterns that should be },{
+                repaired = repaired.replace('}\n  "', '},\n  "').replace('} "', '}, "')
+
+                # Try parsing repaired JSON
+                try:
+                    llama_data = json.loads(repaired)
+                    print(f"         ✅ JSON repaired successfully")
+                except json.JSONDecodeError as repair_error:
+                    print(f"         ❌ JSON repair failed: {repair_error}")
+                    # Log a sample of the problematic JSON for debugging
+                    sample = json_str[:500] if len(json_str) > 500 else json_str
+                    print(f"         📄 JSON sample: {sample}...")
+                    return []
             
             # Map entities by their normalized entity IDs
             entity_map = {}

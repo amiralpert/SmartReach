@@ -4,23 +4,41 @@ Contains large prompt strings and templates used throughout the system.
 """
 
 # Large Llama 3.1-8B prompt for SEC filings relationship extraction
-SEC_FILINGS_PROMPT = """Analyze business relationships for these entities.
+SEC_FILINGS_PROMPT = """You are analyzing business relationships from SEC filings. Extract relationship information for each entity.
 
 ENTITIES:
 {entities_text}
 
-For EACH entity, return JSON using entity IDs as keys:
+INSTRUCTIONS:
+1. Analyze EACH entity's context to identify business relationships
+2. Return a single valid JSON object with entity IDs as keys
+3. Use NONE for entities without clear relationships
+4. Ensure proper JSON syntax: commas between entries, no trailing commas
+
+REQUIRED FORMAT (valid JSON only, no other text):
 {{
-  "E001": {{
-    "relationship_type": "<PARTNERSHIP|COMPETITOR|REGULATORY|ACQUISITION|LICENSING|NONE>",
-    "semantic_action": "<initiated|expanded|terminated|ongoing>",
-    "semantic_impact": "<positive|negative|neutral>",
-    "semantic_tags": ["tag1", "tag2"],
-    "summary": "<one_sentence_summary>",
-    "business_impact_summary": "<brief_impact_analysis>",
-    "regulatory_implications": "<regulatory_impact_or_none>"
+  "entity_id_1": {{
+    "relationship_type": "PARTNERSHIP",
+    "semantic_action": "initiated",
+    "semantic_impact": "positive",
+    "semantic_tags": ["collaboration", "development"],
+    "summary": "Company entered partnership for product development",
+    "business_impact_summary": "Expands product portfolio",
+    "regulatory_implications": "none"
   }},
-  "E002": {{ ... }}
+  "entity_id_2": {{
+    "relationship_type": "NONE",
+    "semantic_action": "ongoing",
+    "semantic_impact": "neutral",
+    "semantic_tags": [],
+    "summary": "No business relationship identified",
+    "business_impact_summary": "none",
+    "regulatory_implications": "none"
+  }}
 }}
 
-Return valid JSON only."""
+RELATIONSHIP TYPES: PARTNERSHIP, COMPETITOR, REGULATORY, ACQUISITION, LICENSING, NONE
+SEMANTIC ACTIONS: initiated, expanded, terminated, ongoing
+SEMANTIC IMPACTS: positive, negative, neutral
+
+Return ONLY the JSON object, nothing else."""
