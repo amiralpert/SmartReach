@@ -36,14 +36,17 @@ python Scripts/pipeline_coordinator.py
 # Connect to Neon PostgreSQL database
 PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach
 
-# Check recent errors in Kaggle logs
-PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT timestamp, cell_number, message, error FROM core.kaggle_logs WHERE error IS NOT NULL ORDER BY timestamp DESC LIMIT 5;"
+# Check recent console logs for GLiNER issues
+PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT timestamp, cell_number, console_output FROM core.console_logs WHERE console_output ILIKE '%gliner%' OR console_output ILIKE '%failed%' ORDER BY timestamp DESC LIMIT 10;"
 
 # Check entity extraction metrics
 PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT COUNT(*) as total_entities, AVG(confidence_score) as avg_confidence, AVG(quality_score) as avg_quality FROM system_uno.sec_entities_raw;"
 
 # Check semantic relationship buckets
 PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "SELECT relationship_type, COUNT(*) as bucket_count, SUM(total_events) as total_relationships FROM system_uno.semantic_buckets GROUP BY relationship_type;"
+
+# Clear entities and relationships for fresh start
+PGPASSWORD=npg_aTFt6Pug3Kpy psql -h ep-royal-star-ad1gn0d4-pooler.c-2.us-east-1.aws.neon.tech -U neondb_owner -d BizIntelSmartReach -c "DELETE FROM system_uno.sec_entities_raw; DELETE FROM system_uno.semantic_events; DELETE FROM system_uno.semantic_buckets; UPDATE system_uno.sec_filings SET is_processed = false;"
 ```
 
 ### Module Testing
@@ -121,13 +124,36 @@ model_name = 'meta-llama/Llama-3.1-8B-Instruct'  # Never do this
 
 ## Important Notes
 
-1. **Kaggle Notebook Structure**: The main notebook has exactly 5 cells (not 7) after modularization
+1. **Kaggle Notebook Structure**: The main notebook has exactly 6 cells (Cell -1 through Cell 5) after modularization
 2. **GitHub Auto-commit**: The system is configured to auto-commit changes - don't ask for permission
 3. **Module Imports**: Always import from `EntityExtractionEngine` package, not inline code
 4. **Token Optimization**: 90% reduction achieved (32,500 → 3,400 tokens) through modularization
 5. **Semantic Storage**: New tables (`semantic_buckets`, `semantic_events`) for relationship analytics
 6. **Consensus Scoring**: Entity quality based on multi-model agreement
 7. **Apollo Integration**: Use `pipeline_coordinator.py` for company enrichment before extraction
+
+## Model-Only Persistence Pattern (October 2025)
+
+**Fast Development Workflow**: For rapid Python code iteration in Kaggle notebook:
+
+1. **Model Caching**: Cell 3 and Cell 4 cache ONLY the expensive models (GLiNER, Llama), not wrapper objects
+2. **Code Refresh**: Cell 5 clears wrapper objects and forces module reload to get latest Python code
+3. **Development Cycle**: After making Python code changes:
+   - Commit changes to GitHub repository
+   - In Kaggle notebook, only rerun Cell 5 (~5-10 seconds)
+   - Fresh code is loaded while preserving expensive model loading
+
+**Key Implementation**:
+- `GLiNEREntityExtractor` supports `cached_model` parameter for model-only persistence
+- Cell 3: `PERSISTENT_GLINER_MODEL` cached, fresh `GLiNEREntityExtractor` created each time
+- Cell 4: `PERSISTENT_LLAMA_MODEL` cached, fresh `RelationshipExtractor` created each time
+- Cell 5: Clears wrapper objects, reloads modules, creates fresh pipeline instances
+
+**Benefits**:
+- ✅ Fast iteration (5-10s vs 60-90s full reload)
+- ✅ Latest Python code changes immediately available
+- ✅ Expensive model loading preserved across runs
+- ✅ No persistence of potentially stale wrapper objects
 
 ## Debugging Quick Checks
 

@@ -4,32 +4,41 @@
 
 You are taking over a **production-ready, fully modularized** SEC filing entity extraction pipeline. This system has been completely refactored for maintainability and now uses external Python modules instead of large notebook cells.
 
-## 🚨 LATEST DEVELOPMENT UPDATES (2025-01-19)
+## 🚨 LATEST DEVELOPMENT UPDATES (October 2025)
 
-### **Critical Change: New Cell -1 Logging Setup**
-**IMMEDIATE ISSUE RESOLVED**: Cell 0 package installation was not visible in console logs, making it impossible to debug UserSecretsClient import errors and package conflicts.
+### **LATEST CRITICAL FIX: Model-Only Persistence Pattern**
+**ISSUE RESOLVED**: GLiNER initialization was failing with "unexpected keyword argument 'cached_model'" error after implementing model-only persistence.
+
+**ROOT CAUSE**: Notebook was modified to use `cached_model` parameter but Python code wasn't updated to support it.
 
 **SOLUTION IMPLEMENTED**:
-1. **NEW Cell -1**: Minimal logging system that runs BEFORE Cell 0
-   - Initializes database connection for logging
-   - Creates `RealTimeKaggleLogger` class
-   - Provides `start_cell_logging()` function globally
-   - Clears existing console logs for fresh debugging
+1. **Fixed GLiNEREntityExtractor**: Added `cached_model` parameter support
+   - `gliner_extractor.py` now accepts `cached_model=None` parameter
+   - Conditional loading: uses cached model if provided, loads fresh otherwise
+   - Maintains backward compatibility for existing usage
 
-2. **UPDATED Cell 0**: Now starts with `start_cell_logging(0)`
-   - All package installation output captured in `core.console_logs` table
-   - Import progress messages logged
-   - GitHub repository setup logged
+2. **Model-Only Persistence Pattern**: Fast development workflow optimized
+   - **Cell 3**: Caches ONLY GLiNER model (`PERSISTENT_GLINER_MODEL`), creates fresh wrapper objects
+   - **Cell 4**: Caches ONLY Llama model (`PERSISTENT_LLAMA_MODEL`), creates fresh wrapper objects
+   - **Cell 5**: Clears wrapper objects, forces module reload, creates fresh instances
 
-3. **GLiNER Testing Added**: New Cell 4 for optional GLiNER entity extraction testing
-   - Alternative to current 4-model NER system
-   - Version-pinned package installation (torch==2.0.1, transformers==4.35.2)
-   - Independent testing framework with GitHub-visible results
+3. **Development Benefits**:
+   - ✅ Fast iteration: Only rerun Cell 5 (~5-10 seconds) after Python code changes
+   - ✅ Fresh code: Latest Python changes immediately available
+   - ✅ Preserved models: Expensive model loading cached across runs
+   - ✅ No stale objects: Wrapper objects recreated to get latest code
 
-### **Console Log Visibility**
-- Console logs now stored in `core.console_logs` table
-- Query with: `SELECT cell_number, console_output, created_at FROM core.console_logs WHERE cell_number IN (-1, 0) ORDER BY created_at DESC;`
-- Cell 0 execution details now fully visible for debugging
+### **Development Workflow (UPDATED)**
+**Fast Python Code Iteration Pattern**:
+1. Make changes to Python files in `/Scripts/EntityExtractionEngine/`
+2. Commit changes to GitHub repository
+3. In Kaggle notebook: **Only rerun Cell 5** (~5-10 seconds)
+4. Fresh code is loaded while preserving expensive model loading
+
+### **Console Log Debugging**
+- Console logs stored in `core.console_logs` table
+- GLiNER debugging: `SELECT timestamp, cell_number, console_output FROM core.console_logs WHERE console_output ILIKE '%gliner%' OR console_output ILIKE '%failed%' ORDER BY timestamp DESC LIMIT 10;`
+- Cell execution details fully visible for debugging
 
 ### **Cell Execution Order**
 MUST run in this order:
@@ -342,11 +351,26 @@ for path in sys.path:
     print(f"  - {path}")
 ```
 
-#### **Model Loading Issues**  
+#### **GLiNER Initialization Issues**
+```python
+# GLiNER "unexpected keyword argument 'cached_model'" error:
+# 1. Verify Scripts/EntityExtractionEngine/gliner_extractor.py has cached_model parameter
+# 2. Check GLiNEREntityExtractor.__init__ signature includes cached_model
+# 3. Ensure latest code is committed and pulled in notebook
+
+# Debug GLiNER extractor:
+import inspect
+from Scripts.EntityExtractionEngine.gliner_extractor import GLiNEREntityExtractor
+sig = inspect.signature(GLiNEREntityExtractor.__init__)
+print(f"Parameters: {list(sig.parameters.keys())}")
+print(f"Cached model supported: {'cached_model' in sig.parameters}")
+```
+
+#### **Model Loading Issues**
 ```python
 # Llama 3.1-8B loading problems:
 # 1. Add HUGGINGFACE_TOKEN to secrets
-# 2. Check GPU/CPU memory availability  
+# 2. Check GPU/CPU memory availability
 # 3. Verify quantization config
 
 # Debug Llama model status:
