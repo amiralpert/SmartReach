@@ -202,10 +202,13 @@ Entity {entity_id}:
 
             self.stats['llama_calls'] += 1
 
-            # Optional: Log raw response for debugging (first 300 chars)
-            if self.config.get('llama', {}).get('debug_responses', False):
-                response_preview = llama_response[:300] if len(llama_response) > 300 else llama_response
-                print(f"         🔍 Llama response preview: {response_preview}...")
+            # ALWAYS print raw Llama response for visibility
+            print(f"         📄 Raw Llama response ({len(llama_response)} chars):")
+            print(f"         " + "="*70)
+            # Print the full response, line by line with indentation
+            for line in llama_response.split('\n'):
+                print(f"         {line}")
+            print(f"         " + "="*70)
 
             # Parse JSON response
             return self._parse_batch_llama_response(llama_response, entities_batch)
