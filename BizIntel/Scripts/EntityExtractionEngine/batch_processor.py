@@ -11,7 +11,7 @@ from .database_queries import get_unprocessed_filings
 _STORAGE_FAILURES = {'count': 0, 'last_reset': time.time()}
 
 def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage,
-                         semantic_storage, network_storage, config: Dict, limit: int = None) -> Dict:
+                         semantic_storage, network_storage, stats_calculator, config: Dict, limit: int = None) -> Dict:
     """Process multiple SEC filings with both entity and relationship extraction"""
     if limit is None:
         limit = config['processing']['filing_batch_size']
@@ -157,7 +157,46 @@ def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_stor
                                 print("   ⚠️ Network edge storage failed")
                     except Exception as network_error:
                         print(f"   ⚠️ Network storage error: {network_error}")
-            
+
+            # Step 4: Calculate network stats for affected entities (after relationships stored)
+            if relationships and config['processing'].get('enable_network_stats', True):
+                try:
+                    # Collect unique entity IDs from relationships
+                    affected_entities = set()
+                    for rel in relationships:
+                        if rel.get('source_entity_id'):
+                            affected_entities.add(rel['source_entity_id'])
+                        if rel.get('target_entity_id'):
+                            affected_entities.add(rel['target_entity_id'])
+
+                    if affected_entities:
+                        import psycopg2
+                        from kaggle_secrets import UserSecretsClient
+
+                        user_secrets = UserSecretsClient()
+                        with psycopg2.connect(
+                            host=user_secrets.get_secret("NEON_HOST"),
+                            database=user_secrets.get_secret("NEON_DATABASE"),
+                            user=user_secrets.get_secret("NEON_USER"),
+                            password=user_secrets.get_secret("NEON_PASSWORD"),
+                            port=5432,
+                            sslmode='require'
+                        ) as stats_conn:
+                            stats_cursor = stats_conn.cursor()
+
+                            # Calculate stats for each affected entity
+                            print(f"   📊 Calculating network stats for {len(affected_entities)} entities...")
+                            for entity_id in affected_entities:
+                                stats = stats_calculator.calculate_entity_stats(entity_id, stats_cursor)
+                                if stats:
+                                    stats_calculator.store_entity_stats(stats, stats_cursor)
+
+                            stats_conn.commit()
+                            print(f"   ✅ Network stats updated")
+
+                except Exception as stats_error:
+                    print(f"   ⚠️ Network stats calculation error: {stats_error}")
+
             # Success
             processing_time = time.time() - filing_start
             successful_count += 1

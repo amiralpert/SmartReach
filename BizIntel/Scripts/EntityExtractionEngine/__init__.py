@@ -18,6 +18,7 @@ from .relationship_extractor import RelationshipExtractor
 from .semantic_storage import SemanticRelationshipStorage
 from .pipeline_storage import PipelineEntityStorage
 from .network_relationship_storage import NetworkRelationshipStorage
+from .network_stats_calculator import NetworkStatsCalculator
 from .entity_deduplication import find_entity_by_canonical_name, find_or_create_entity_id, add_to_name_resolution_table
 from .batch_processor import process_filings_batch
 from .analytics_reporter import generate_pipeline_analytics_report
@@ -64,6 +65,7 @@ __all__ = [
     'SemanticRelationshipStorage',
     'PipelineEntityStorage',
     'NetworkRelationshipStorage',
+    'NetworkStatsCalculator',
     'find_entity_by_canonical_name',
     'find_or_create_entity_id',
     'add_to_name_resolution_table',
