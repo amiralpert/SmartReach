@@ -66,26 +66,84 @@ class NetworkRelationshipStorage:
             traceback.print_exc()
             return False
 
-    def resolve_target_entity(self, target_name: str, filing_data: Dict, db_cursor) -> Optional[str]:
+    def promote_entity_to_network(self, entity_id: str, db_cursor) -> bool:
         """
-        Resolve target entity name to UUID (find existing or auto-create)
+        Promote entity from sec_entities_raw to relationship_entities
 
         Args:
-            target_name: Entity name from Llama output
-            filing_data: Filing context for auto-created entities
+            entity_id: Entity UUID from sec_entities_raw
             db_cursor: Active database cursor
 
         Returns:
-            Entity UUID (existing or newly created), or None if failed
+            True if successful
+        """
+        try:
+            # Check if already in relationship_entities
+            db_cursor.execute("""
+                SELECT entity_id FROM system_uno.relationship_entities
+                WHERE entity_id = %s
+            """, (entity_id,))
+
+            if db_cursor.fetchone():
+                return True  # Already promoted
+
+            # Fetch entity from sec_entities_raw
+            db_cursor.execute("""
+                SELECT entity_text, canonical_name, entity_type, accession_number,
+                       section_name, character_start, character_end, confidence_score
+                FROM system_uno.sec_entities_raw
+                WHERE entity_id = %s
+            """, (entity_id,))
+
+            entity_data = db_cursor.fetchone()
+            if not entity_data:
+                return False
+
+            entity_text, canonical_name, entity_type, accession_number, \
+                section_name, char_start, char_end, confidence = entity_data
+
+            # Promote to relationship_entities
+            db_cursor.execute("""
+                INSERT INTO system_uno.relationship_entities (
+                    entity_id, entity_name, entity_name_normalized, canonical_name,
+                    entity_type, source_type, confidence, resolution_method,
+                    original_extraction_id, accession_number, section_name,
+                    character_position_start, character_position_end
+                ) VALUES (%s, %s, %s, %s, %s, 'gliner_extracted', %s, 'exact_match', %s, %s, %s, %s, %s)
+                ON CONFLICT (entity_id) DO NOTHING
+            """, (
+                entity_id, entity_text, entity_text.lower().strip(), canonical_name,
+                entity_type, confidence, entity_id, accession_number,
+                section_name, char_start, char_end
+            ))
+
+            print(f"      ✓ Promoted to network: {canonical_name} ({entity_type})")
+            return True
+
+        except Exception as e:
+            print(f"      ⚠️ Entity promotion failed: {e}")
+            return False
+
+    def resolve_target_entity(self, target_name: str, filing_data: Dict, db_cursor) -> Optional[str]:
+        """
+        Resolve target entity name to UUID (find in sec_entities_raw and promote, or create stub)
+
+        Args:
+            target_name: Entity name from Llama output
+            filing_data: Filing context
+            db_cursor: Active database cursor
+
+        Returns:
+            Entity UUID, or None if failed
         """
         if not target_name:
             return None
 
         try:
-            # Step 1: Try to find existing entity by canonical name
+            # Step 1: Try to find in relationship_entities (already promoted)
             existing = find_entity_by_canonical_name(
                 canonical_name=target_name,
-                entity_type='UNKNOWN',  # We don't know type yet
+                entity_type='UNKNOWN',
                 db_cursor=db_cursor,
                 fuzzy_threshold=0.85
             )
@@ -95,46 +153,47 @@ class NetworkRelationshipStorage:
                 self.stats['target_entities_resolved'] += 1
                 return entity_id
 
-            # Step 2: Entity doesn't exist - auto-create it
+            # Step 2: Try to find in sec_entities_raw (needs promotion)
+            db_cursor.execute("""
+                SELECT entity_id, canonical_name
+                FROM system_uno.sec_entities_raw
+                WHERE canonical_name = %s OR LOWER(canonical_name) = LOWER(%s)
+                LIMIT 1
+            """, (target_name, target_name))
+
+            raw_entity = db_cursor.fetchone()
+
+            if raw_entity:
+                # Found in archive - promote it
+                entity_id = raw_entity[0]
+                if self.promote_entity_to_network(entity_id, db_cursor):
+                    self.stats['target_entities_resolved'] += 1
+                    return entity_id
+
+            # Step 3: Not found anywhere - create Llama-inferred stub
             new_entity_id = str(uuid.uuid4())
 
             db_cursor.execute("""
-                INSERT INTO system_uno.sec_entities_raw (
-                    entity_id, entity_text, canonical_name, entity_type,
-                    company_domain, filing_type, extraction_timestamp,
-                    mention_count, first_seen_at, last_seen_at,
-                    auto_created, confidence_score
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, %s, %s, true, 0.5)
+                INSERT INTO system_uno.relationship_entities (
+                    entity_id, entity_name, entity_name_normalized, canonical_name,
+                    entity_type, source_type, confidence, resolution_method
+                ) VALUES (%s, %s, %s, %s, 'UNKNOWN', 'llama_inferred', 0.6, 'llama_inferred')
             """, (
                 new_entity_id,
                 target_name,
-                target_name,
-                'UNKNOWN',  # Will be enriched later when entity is GLiNER-extracted
-                filing_data.get('company_domain', ''),
-                filing_data.get('filing_type', ''),
-                datetime.now(),
-                datetime.now(),
-                datetime.now()
+                target_name.lower().strip(),
+                target_name
             ))
 
-            # Add to name resolution table
-            add_to_name_resolution_table(
-                entity_name=target_name,
-                canonical_name=target_name,
-                entity_id=new_entity_id,
-                entity_type='UNKNOWN',
-                resolution_method='auto_created',
-                confidence=0.5,
-                db_cursor=db_cursor
-            )
-
             self.stats['target_entities_auto_created'] += 1
-            print(f"      ➕ Auto-created entity: {target_name} → {new_entity_id[:8]}...")
+            print(f"      ➕ Created Llama-inferred stub: {target_name} → {new_entity_id[:8]}...")
 
             return new_entity_id
 
         except Exception as e:
             print(f"      ⚠️ Target entity resolution failed for '{target_name}': {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def check_edge_exists(self, source_id: str, target_id: str,
@@ -185,7 +244,18 @@ class NetworkRelationshipStorage:
             Tuple of (forward_edge_id, reverse_edge_id)
         """
         try:
-            # Step 1: Resolve target entity name to UUID
+            source_entity_id = edge_data.get('source_entity_id')
+
+            if not source_entity_id:
+                print(f"      ⚠️ Missing source entity ID")
+                return (None, None)
+
+            # Step 1: Promote source entity to network (if not already promoted)
+            if not self.promote_entity_to_network(source_entity_id, db_cursor):
+                print(f"      ⚠️ Failed to promote source entity to network")
+                return (None, None)
+
+            # Step 2: Resolve target entity (auto-promotes or creates stub)
             target_entity_id = self.resolve_target_entity(
                 edge_data.get('target_entity_name', ''),
                 filing_data,
@@ -196,13 +266,7 @@ class NetworkRelationshipStorage:
                 print(f"      ⚠️ Failed to resolve target entity: {edge_data.get('target_entity_name')}")
                 return (None, None)
 
-            source_entity_id = edge_data.get('source_entity_id')
-
-            if not source_entity_id:
-                print(f"      ⚠️ Missing source entity ID")
-                return (None, None)
-
-            # Step 2: Create/update forward edge (source → target)
+            # Step 3: Create/update forward edge (source → target)
             forward_edge_id = self._create_or_update_edge(
                 source_id=source_entity_id,
                 target_id=target_entity_id,
@@ -213,7 +277,7 @@ class NetworkRelationshipStorage:
                 db_cursor=db_cursor
             )
 
-            # Step 3: Create/update reverse edge (target → source)
+            # Step 4: Create/update reverse edge (target → source)
             reverse_edge_id = self._create_or_update_edge(
                 source_id=target_entity_id,
                 target_id=source_entity_id,

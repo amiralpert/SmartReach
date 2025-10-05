@@ -80,10 +80,10 @@ def find_entity_by_canonical_name(
     if not canonical_name or not entity_type:
         return None
 
-    # Step 1: Try exact match on canonical_name
+    # Step 1: Try exact match on canonical_name in relationship_entities
     db_cursor.execute("""
         SELECT entity_id, canonical_name
-        FROM system_uno.sec_entities_raw
+        FROM system_uno.relationship_entities
         WHERE canonical_name = %s AND entity_type = %s
         LIMIT 1
     """, (canonical_name, entity_type))
@@ -96,10 +96,10 @@ def find_entity_by_canonical_name(
     if entity_type in ['Filing Company', 'Private Company', 'Public Company', 'Organization', 'ORGANIZATION']:
         normalized_search = normalize_company_name(canonical_name)
 
-        # Get all company entities of this type for fuzzy matching
+        # Get all company entities of this type for fuzzy matching from relationship_entities
         db_cursor.execute("""
             SELECT DISTINCT entity_id, canonical_name
-            FROM system_uno.sec_entities_raw
+            FROM system_uno.relationship_entities
             WHERE entity_type IN ('Filing Company', 'Private Company', 'Public Company', 'Organization', 'ORGANIZATION')
         """)
 
@@ -121,10 +121,10 @@ def find_entity_by_canonical_name(
         if best_match and best_score >= fuzzy_threshold:
             return best_match
 
-    # Step 3: For other entity types, try case-insensitive exact match
+    # Step 3: For other entity types, try case-insensitive exact match in relationship_entities
     db_cursor.execute("""
         SELECT entity_id, canonical_name
-        FROM system_uno.sec_entities_raw
+        FROM system_uno.relationship_entities
         WHERE LOWER(canonical_name) = LOWER(%s) AND entity_type = %s
         LIMIT 1
     """, (canonical_name, entity_type))
@@ -181,7 +181,7 @@ def add_to_name_resolution_table(
     db_cursor
 ) -> bool:
     """
-    Add entity name to resolution table for future lookups
+    Add entity name to relationship_entities table for future lookups
 
     Args:
         entity_name: The actual text extracted (may be variant)
@@ -199,7 +199,7 @@ def add_to_name_resolution_table(
         # Check if this exact mapping already exists
         db_cursor.execute("""
             SELECT resolution_id, occurrence_count
-            FROM system_uno.entity_name_resolution
+            FROM system_uno.relationship_entities
             WHERE entity_name = %s AND entity_id = %s
         """, (entity_name, entity_id))
 
@@ -209,7 +209,7 @@ def add_to_name_resolution_table(
             # Update occurrence count
             resolution_id, occurrence_count = existing
             db_cursor.execute("""
-                UPDATE system_uno.entity_name_resolution
+                UPDATE system_uno.relationship_entities
                 SET occurrence_count = occurrence_count + 1,
                     last_seen_at = CURRENT_TIMESTAMP
                 WHERE resolution_id = %s
@@ -217,18 +217,20 @@ def add_to_name_resolution_table(
         else:
             # Insert new resolution record
             db_cursor.execute("""
-                INSERT INTO system_uno.entity_name_resolution (
+                INSERT INTO system_uno.relationship_entities (
                     entity_name,
                     entity_name_normalized,
+                    canonical_name,
                     entity_id,
                     entity_type,
                     resolution_method,
                     confidence,
                     occurrence_count
-                ) VALUES (%s, %s, %s, %s, %s, %s, 1)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1)
             """, (
                 entity_name,
                 entity_name.lower().strip(),
+                canonical_name,
                 entity_id,
                 entity_type,
                 resolution_method,
@@ -238,5 +240,5 @@ def add_to_name_resolution_table(
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to add to name resolution table: {e}")
+        print(f"⚠️ Failed to add to relationship_entities table: {e}")
         return False

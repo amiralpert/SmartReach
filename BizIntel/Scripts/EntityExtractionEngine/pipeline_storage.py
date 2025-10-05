@@ -88,17 +88,9 @@ class PipelineEntityStorage:
 
                     print(f"   ♻️  Updated {len(existing_entities)} existing entities (incremented mention_count)")
 
-                # Add all entities to name resolution table
-                for entity in entities:
-                    add_to_name_resolution_table(
-                        entity_name=entity.get('entity_text', ''),
-                        canonical_name=entity.get('canonical_name', ''),
-                        entity_id=entity.get('entity_id'),
-                        entity_type=entity.get('entity_type', ''),
-                        resolution_method='exact_match' if entity.get('is_new_entity', True) else 'reused',
-                        confidence=1.0,
-                        db_cursor=cursor
-                    )
+                # NOTE: Do NOT add entities to relationship_entities here
+                # They will be promoted later when Llama finds relationships with them
+                # This keeps relationship_entities clean (only entities in relationships)
 
                 conn.commit()
                 self.storage_stats['transactions_completed'] += 1
