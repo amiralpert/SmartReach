@@ -218,7 +218,7 @@ Entity {entity_id}:
             return []
     
     def _parse_batch_llama_response(self, response: str, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
-        """Parse Llama batch response into relationship records"""
+        """Parse Llama batch response into relationship records (BINARY EDGE FORMAT)"""
         relationships = []
 
         try:
@@ -245,9 +245,9 @@ Entity {entity_id}:
                 # Fix 1: Remove trailing commas before closing braces
                 repaired = repaired.replace(',}', '}').replace(',]', ']')
 
-                # Fix 2: Ensure proper comma placement between entries (common missing comma issue)
-                # This is tricky - try to detect }{ patterns that should be },{
-                repaired = repaired.replace('}\n  "', '},\n  "').replace('} "', '}, "')
+                # Fix 2: Ensure proper comma placement between array entries
+                repaired = repaired.replace('}\n    {', '},\n    {')
+                repaired = repaired.replace('} {', '}, {')
 
                 # Try parsing repaired JSON
                 try:
@@ -259,73 +259,97 @@ Entity {entity_id}:
                     sample = json_str[:500] if len(json_str) > 500 else json_str
                     print(f"         📄 JSON sample: {sample}...")
                     return []
-            
-            # Map entities by their normalized entity IDs
-            entity_map = {}
+
+            # NEW FORMAT: Extract edges array from response
+            edges = llama_data.get('edges', [])
+
+            if not edges:
+                print(f"         ℹ️ No edges found in Llama response (empty or no relationships)")
+                return []
+
+            print(f"         📊 Found {len(edges)} binary edges in Llama response")
+
+            # Build entity lookup map by text and canonical_name
+            entity_lookup = {}
             for entity, context, section in entities_batch:
-                # Get normalized entity ID from coreference group if available
-                coreference_group = entity.get("coreference_group", {})
-                if isinstance(coreference_group, str):
-                    try:
-                        coreference_group = json.loads(coreference_group)
-                    except:
-                        coreference_group = {}
+                entity_text = entity.get('entity_text', '')
+                canonical_name = entity.get('canonical_name', entity_text)
 
-                # Use normalized_entity_id for mapping, fallback to entity_id
-                normalized_id = coreference_group.get("normalized_entity_id")
-                entity_id = normalized_id if normalized_id else entity.get("entity_id")
+                # Map both entity_text and canonical_name to entity record
+                entity_lookup[entity_text.lower()] = entity
+                entity_lookup[canonical_name.lower()] = entity
 
-                if entity_id:
-                    entity_map[entity_id] = entity
-            
-            # Process each entity's analysis
-            for entity_id, analysis in llama_data.items():
-                if entity_id not in entity_map:
+            # Process each binary edge
+            for edge in edges:
+                try:
+                    source_name = edge.get('source_entity_name', '')
+                    target_name = edge.get('target_entity_name', '')
+
+                    if not source_name or not target_name:
+                        print(f"         ⚠️ Skipping edge with missing source/target names")
+                        continue
+
+                    # Try to find source entity in our batch
+                    source_entity = entity_lookup.get(source_name.lower())
+                    source_entity_id = source_entity.get('entity_id') if source_entity else None
+
+                    # Store edge data (target resolution happens in storage layer)
+                    relationship = {
+                        'relationship_id': str(uuid.uuid4()),
+
+                        # Source entity (from our extracted entities)
+                        'source_entity_id': source_entity_id,
+                        'source_entity_name': source_name,
+
+                        # Target entity (will be resolved in storage layer)
+                        'target_entity_name': target_name,
+                        'target_entity_id': None,  # Resolved later via name resolution
+
+                        # Relationship details
+                        'relationship_type': edge.get('relationship_type', 'UNKNOWN'),
+                        'edge_label': edge.get('edge_label', ''),
+                        'reverse_edge_label': edge.get('reverse_edge_label', ''),
+                        'detailed_summary': edge.get('detailed_summary', ''),
+
+                        # Deal structure
+                        'deal_terms': edge.get('deal_terms'),
+                        'monetary_value': edge.get('monetary_value'),
+                        'equity_percentage': edge.get('equity_percentage'),
+                        'royalty_rate': edge.get('royalty_rate'),
+
+                        # Arrays (technologies, products, therapeutic areas)
+                        'technology_names': edge.get('technology_names', []),
+                        'product_names': edge.get('product_names', []),
+                        'therapeutic_areas': edge.get('therapeutic_areas', []),
+
+                        # Dates
+                        'event_date': edge.get('event_date'),
+                        'agreement_date': edge.get('agreement_date'),
+                        'effective_date': edge.get('effective_date'),
+                        'expiration_date': edge.get('expiration_date'),
+                        'duration_years': edge.get('duration_years'),
+
+                        # Metadata
+                        'extraction_timestamp': datetime.now(),
+                        'llama_model': self.config['llama']['model_name']
+                    }
+
+                    relationships.append(relationship)
+
+                except Exception as edge_error:
+                    print(f"         ⚠️ Error processing edge: {edge_error}")
                     continue
 
-                entity = entity_map[entity_id]
-                
-                # Skip if no meaningful relationship
-                if analysis.get('relationship_type') in ['NONE', None, '']:
-                    continue
-                
-                # Validate required entity data before creating relationship
-                entity_db_id = entity.get('entity_id')
-                if not entity_db_id:
-                    print(f"      ⚠️ Skipping relationship for entity {entity_id} - missing entity_id")
-                    continue
-
-                # Create relationship record using proper database references
-                relationship = {
-                    'relationship_id': str(uuid.uuid4()),
-                    'entity_extraction_id': entity_db_id,  # Use entity_id as DB primary key
-                    'source_entity_id': entity_db_id,  # For semantic storage compatibility
-                    'entity_reference_id': entity_id,  # Store entity ID for tracking/debugging
-                    'entity_text': entity.get('entity_text'),
-
-                    # Llama analysis results
-                    'relationship_type': analysis.get('relationship_type'),
-                    'semantic_action': analysis.get('semantic_action'),
-                    'semantic_impact': analysis.get('semantic_impact'),
-                    'semantic_tags': analysis.get('semantic_tags', []),
-                    'summary': analysis.get('summary'),
-                    'business_impact_summary': analysis.get('business_impact_summary'),
-                    'regulatory_implications': analysis.get('regulatory_implications'),
-
-                    # Metadata
-                    'extraction_timestamp': datetime.now(),
-                    'llama_model': self.config['llama']['model_name']
-                }
-                
-                relationships.append(relationship)
-            
+            print(f"         ✅ Parsed {len(relationships)} relationship edges")
             return relationships
-            
+
         except json.JSONDecodeError as e:
             print(f"         ⚠️ JSON parsing failed: {e}")
             return []
         except Exception as e:
             print(f"         ⚠️ Response parsing failed: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     
