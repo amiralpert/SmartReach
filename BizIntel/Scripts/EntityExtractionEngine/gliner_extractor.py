@@ -403,12 +403,44 @@ class GLiNEREntityExtractor:
             # Extract entities
             raw_entities = self.extract_entities(text)
 
-            # FILTER OUT DATE ENTITIES before normalization
-            filtered_entities = [e for e in raw_entities if e.get('label', '') != 'Date']
+            # FILTER OUT low-value entities before normalization
+            def should_filter_entity(entity: Dict) -> bool:
+                """Check if entity should be filtered out"""
+                entity_type = entity.get('label', '')
+                entity_text = entity.get('text', '')
+
+                # Filter Date entities
+                if entity_type == 'Date':
+                    return True
+
+                # Filter Money entities
+                if entity_type == 'Money':
+                    return True
+
+                # Filter Law boilerplate
+                if entity_type == 'Law':
+                    # Keep specific named laws
+                    if 'Hart-Scott-Rodino' in entity_text:
+                        return False
+                    # Filter Securities Acts and Section references
+                    if any(x in entity_text for x in [
+                        'Securities Act of 1933',
+                        'Securities Exchange Act',
+                        'Exchange Act',
+                        'Section '
+                    ]):
+                        return True
+                    # Filter generic legal terms
+                    if entity_text.lower() in ['legal proceedings', 'litigation']:
+                        return True
+
+                return False
+
+            filtered_entities = [e for e in raw_entities if not should_filter_entity(e)]
             if len(raw_entities) != len(filtered_entities):
-                dates_filtered = len(raw_entities) - len(filtered_entities)
+                filtered_count = len(raw_entities) - len(filtered_entities)
                 if self.debug:
-                    print(f"  Filtered out {dates_filtered} Date entities (will be stored as edge metadata only)")
+                    print(f"  Filtered out {filtered_count} low-value entities (Money, Date, Law boilerplate)")
 
             normalized_entities = self.normalize_entities(filtered_entities, filing_context or {},
                                                        GLINER_CONFIG['normalization'])
