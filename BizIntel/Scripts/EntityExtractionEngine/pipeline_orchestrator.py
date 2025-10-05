@@ -18,7 +18,8 @@ _PROCESSING_STATE = {
 }
 
 def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_storage,
-                         semantic_storage, config: Dict, db_config: Dict = None) -> Dict:
+                         semantic_storage, network_storage, stats_calculator,
+                         config: Dict, db_config: Dict = None) -> Dict:
     """Execute the complete SEC filing processing pipeline with comprehensive reporting
 
     Args:
@@ -26,6 +27,8 @@ def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_stor
         relationship_extractor: Llama 3.1 relationship extractor
         pipeline_storage: Entity storage handler
         semantic_storage: Semantic relationship storage handler
+        network_storage: Network relationship graph storage handler
+        stats_calculator: Network statistics calculator
         config: Pipeline configuration
         db_config: Database configuration (optional, uses default if None)
     """
@@ -106,8 +109,9 @@ def execute_main_pipeline(entity_pipeline, relationship_extractor, pipeline_stor
     
     # Run the pipeline
     batch_results = process_filings_batch(
-        entity_pipeline, relationship_extractor, pipeline_storage, 
-        semantic_storage, config, limit=config["processing"]["filing_batch_size"]
+        entity_pipeline, relationship_extractor, pipeline_storage,
+        semantic_storage, network_storage, stats_calculator,
+        config, limit=config["processing"]["filing_batch_size"]
     )
     
     # Display comprehensive results

@@ -19,18 +19,30 @@ except ImportError:
 
 class RelationshipExtractor:
     """Extract business relationships using local Llama 3.1-8B model"""
-    
-    def __init__(self, config: Dict):
+
+    def __init__(self, config: Dict, cached_tokenizer=None, cached_model=None):
+        """Initialize relationship extractor
+
+        Args:
+            config: Configuration dictionary
+            cached_tokenizer: Optional pre-loaded tokenizer (for model-only persistence)
+            cached_model: Optional pre-loaded model (for model-only persistence)
+        """
         self.config = config
-        self.model = None
-        self.tokenizer = None
+        self.model = cached_model
+        self.tokenizer = cached_tokenizer
         self.stats = {
             'llama_calls': 0,
             'entities_analyzed': 0,
             'relationships_extracted': 0,
             'failed_extractions': 0
         }
-        self._load_llama_model()
+
+        # Only load model if not provided (enables model-only persistence pattern)
+        if cached_model is None or cached_tokenizer is None:
+            self._load_llama_model()
+        else:
+            print("   ♻️  Using cached Llama model (model-only persistence)")
     
     def _load_llama_model(self):
         """Load Llama 3.1-8B model locally with optimization"""
