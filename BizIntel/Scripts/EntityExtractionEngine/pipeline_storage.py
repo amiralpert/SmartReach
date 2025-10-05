@@ -69,7 +69,7 @@ class PipelineEntityStorage:
                             filing_date, section_name, character_start, character_end,
                             surrounding_context, confidence_score, coreference_group,
                             basic_relationships, extraction_timestamp, gliner_model_version,
-                            mention_count, first_seen_at, last_seen_at
+                            mention_count, first_seen_at, last_seen_at, canonical_entity_id
                         ) VALUES %s
                     """
 
@@ -129,7 +129,7 @@ class PipelineEntityStorage:
         basic_relationships = json.dumps(entity.get('basic_relationships', []))
 
         return (
-            entity.get('entity_id', str(uuid.uuid4())),  # entity_id (primary key)
+            entity.get('entity_id', str(uuid.uuid4())),  # entity_id (mention-specific UUID)
             entity.get('entity_text', ''),                   # entity_text
             entity.get('canonical_name', ''),                # canonical_name
             entity_type,                                      # entity_type
@@ -149,7 +149,8 @@ class PipelineEntityStorage:
             entity.get('gliner_model_version', 'gliner_medium-v2.1'), # gliner_model_version
             1,                                              # mention_count (default 1 for new entities)
             datetime.now(),                                 # first_seen_at
-            datetime.now()                                  # last_seen_at
+            datetime.now(),                                 # last_seen_at
+            entity.get('canonical_entity_id')               # canonical_entity_id (NEW - links to network)
         )
     
     def _calculate_quality_score(self, entity: Dict) -> float:

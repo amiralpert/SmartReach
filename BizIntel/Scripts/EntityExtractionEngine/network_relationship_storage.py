@@ -66,12 +66,12 @@ class NetworkRelationshipStorage:
             traceback.print_exc()
             return False
 
-    def promote_entity_to_network(self, entity_id: str, db_cursor) -> bool:
+    def promote_entity_to_network(self, canonical_entity_id: str, db_cursor) -> bool:
         """
-        Promote entity from sec_entities_raw to relationship_entities
+        Promote canonical entity to relationship_entities network table
 
         Args:
-            entity_id: Entity UUID from sec_entities_raw
+            canonical_entity_id: Canonical UUID from entity_name_resolution
             db_cursor: Active database cursor
 
         Returns:
@@ -82,42 +82,59 @@ class NetworkRelationshipStorage:
             db_cursor.execute("""
                 SELECT entity_id FROM system_uno.relationship_entities
                 WHERE entity_id = %s
-            """, (entity_id,))
+            """, (canonical_entity_id,))
 
             if db_cursor.fetchone():
                 return True  # Already promoted
 
-            # Fetch entity from sec_entities_raw
+            # Get canonical info from entity_name_resolution
             db_cursor.execute("""
-                SELECT entity_text, canonical_name, entity_type, accession_number,
-                       section_name, character_start, character_end, confidence_score
-                FROM system_uno.sec_entities_raw
-                WHERE entity_id = %s
-            """, (entity_id,))
+                SELECT canonical_name, entity_type
+                FROM system_uno.entity_name_resolution
+                WHERE canonical_entity_id = %s
+                LIMIT 1
+            """, (canonical_entity_id,))
 
-            entity_data = db_cursor.fetchone()
-            if not entity_data:
+            canonical_info = db_cursor.fetchone()
+            if not canonical_info:
+                print(f"      ⚠️ Canonical entity {canonical_entity_id[:8]}... not found in entity_name_resolution")
                 return False
 
-            entity_text, canonical_name, entity_type, accession_number, \
-                section_name, char_start, char_end, confidence = entity_data
+            canonical_name, entity_type = canonical_info
 
-            # Promote to relationship_entities
+            # Get best mention from sec_entities_raw for metadata
+            db_cursor.execute("""
+                SELECT entity_text, accession_number, section_name,
+                       character_start, character_end, confidence_score
+                FROM system_uno.sec_entities_raw
+                WHERE canonical_entity_id = %s
+                ORDER BY confidence_score DESC
+                LIMIT 1
+            """, (canonical_entity_id,))
+
+            best_mention = db_cursor.fetchone()
+            if not best_mention:
+                print(f"      ⚠️ No mentions found for canonical entity {canonical_entity_id[:8]}...")
+                return False
+
+            entity_text, accession_number, section_name, char_start, char_end, confidence = best_mention
+
+            # Promote to relationship_entities using CANONICAL UUID
             db_cursor.execute("""
                 INSERT INTO system_uno.relationship_entities (
                     entity_id, entity_name, entity_name_normalized, canonical_name,
                     entity_type, source_type, confidence, resolution_method,
-                    original_extraction_id, accession_number, section_name,
+                    accession_number, section_name,
                     character_position_start, character_position_end
-                ) VALUES (%s, %s, %s, %s, %s, 'gliner_extracted', %s, 'exact_match', %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, 'gliner_extracted', %s, 'canonical_promotion', %s, %s, %s, %s)
                 ON CONFLICT (entity_id) DO NOTHING
             """, (
-                entity_id, entity_text, entity_text.lower().strip(), canonical_name,
-                entity_type, confidence, entity_id, accession_number,
+                canonical_entity_id, entity_text, entity_text.lower().strip(), canonical_name,
+                entity_type, confidence, accession_number,
                 section_name, char_start, char_end
             ))
 
-            print(f"      ✓ Promoted to network: {canonical_name} ({entity_type})")
+            print(f"      ✓ Promoted to network: {canonical_name} ({entity_type}) [{canonical_entity_id[:8]}...]")
             return True
 
         except Exception as e:
@@ -244,32 +261,46 @@ class NetworkRelationshipStorage:
             Tuple of (forward_edge_id, reverse_edge_id)
         """
         try:
-            source_entity_id = edge_data.get('source_entity_id')
+            source_mention_id = edge_data.get('source_entity_id')
 
-            if not source_entity_id:
+            if not source_mention_id:
                 print(f"      ⚠️ Missing source entity ID")
                 return (None, None)
 
-            # Step 1: Promote source entity to network (if not already promoted)
-            if not self.promote_entity_to_network(source_entity_id, db_cursor):
+            # Step 1: Look up canonical UUID from mention UUID
+            db_cursor.execute("""
+                SELECT canonical_entity_id
+                FROM system_uno.sec_entities_raw
+                WHERE entity_id = %s
+            """, (source_mention_id,))
+
+            result = db_cursor.fetchone()
+            if not result:
+                print(f"      ⚠️ Source mention {source_mention_id[:8]}... not found in sec_entities_raw")
+                return (None, None)
+
+            source_canonical_id = result[0]
+
+            # Step 2: Promote CANONICAL entity to network (if not already promoted)
+            if not self.promote_entity_to_network(source_canonical_id, db_cursor):
                 print(f"      ⚠️ Failed to promote source entity to network")
                 return (None, None)
 
-            # Step 2: Resolve target entity (auto-promotes or creates stub)
-            target_entity_id = self.resolve_target_entity(
+            # Step 3: Resolve target entity (auto-promotes or creates stub with canonical UUID)
+            target_canonical_id = self.resolve_target_entity(
                 edge_data.get('target_entity_name', ''),
                 filing_data,
                 db_cursor
             )
 
-            if not target_entity_id:
+            if not target_canonical_id:
                 print(f"      ⚠️ Failed to resolve target entity: {edge_data.get('target_entity_name')}")
                 return (None, None)
 
-            # Step 3: Create/update forward edge (source → target)
+            # Step 4: Create/update forward edge (source → target) using CANONICAL UUIDs
             forward_edge_id = self._create_or_update_edge(
-                source_id=source_entity_id,
-                target_id=target_entity_id,
+                source_id=source_canonical_id,
+                target_id=target_canonical_id,
                 edge_label=edge_data.get('edge_label', ''),
                 relationship_type=edge_data.get('relationship_type', 'UNKNOWN'),
                 edge_data=edge_data,
@@ -277,10 +308,10 @@ class NetworkRelationshipStorage:
                 db_cursor=db_cursor
             )
 
-            # Step 4: Create/update reverse edge (target → source)
+            # Step 5: Create/update reverse edge (target → source) using CANONICAL UUIDs
             reverse_edge_id = self._create_or_update_edge(
-                source_id=target_entity_id,
-                target_id=source_entity_id,
+                source_id=target_canonical_id,
+                target_id=source_canonical_id,
                 edge_label=edge_data.get('reverse_edge_label', ''),
                 relationship_type=edge_data.get('relationship_type', 'UNKNOWN'),
                 edge_data=edge_data,

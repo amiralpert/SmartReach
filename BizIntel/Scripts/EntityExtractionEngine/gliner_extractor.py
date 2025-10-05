@@ -37,7 +37,7 @@ except Exception as e:
 from .gliner_config import GLINER_CONFIG
 from .gliner_normalization import normalize_entities, group_similar_entities
 from .logging_utils import log_info, log_warning, log_error
-from .entity_deduplication import find_or_create_entity_id, add_to_name_resolution_table
+from .entity_deduplication import find_or_create_canonical_id
 
 @dataclass
 class GLiNEREntity:
@@ -468,40 +468,45 @@ class GLiNEREntityExtractor:
                     text_end = min(len(text), mention['end'] + window_size)
                     surrounding_text = text[text_start:text_end]
 
-                    # Entity deduplication: check if canonical_name exists before creating UUID
+                    # Get canonical info
                     canonical_name = entity.get('canonical_name', mention['text'])
                     entity_type = mention['label']
+                    entity_name = mention['text']
 
-                    # Use deduplication if database cursor provided
+                    # Generate mention-specific UUID (every mention gets unique ID)
+                    mention_entity_id = str(uuid.uuid4())
+
+                    # Find or create canonical UUID via entity_name_resolution
                     if db_cursor:
                         try:
-                            entity_id, is_new = find_or_create_entity_id(
-                                canonical_name, entity_type, db_cursor
+                            canonical_entity_id, is_new = find_or_create_canonical_id(
+                                entity_name, canonical_name, entity_type, db_cursor
                             )
                             if not is_new and self.debug:
-                                print(f"  ♻️  Reusing UUID for '{canonical_name}' ({entity_type})")
+                                print(f"  ♻️  Reusing canonical UUID for '{canonical_name}' ({entity_type})")
                         except Exception as e:
                             if self.debug:
-                                print(f"  ⚠️ Deduplication failed: {e}, creating new UUID")
-                            entity_id = str(uuid.uuid4())
+                                print(f"  ⚠️ Deduplication failed: {e}, creating new canonical UUID")
+                            canonical_entity_id = str(uuid.uuid4())
                             is_new = True
                     else:
-                        # No cursor provided - create new UUID (backward compatibility)
-                        entity_id = str(uuid.uuid4())
+                        # No cursor provided - create new canonical UUID (backward compatibility)
+                        canonical_entity_id = str(uuid.uuid4())
                         is_new = True
 
-                    # Each database record
+                    # Each database record (mention-specific)
                     entity_record = {
                         'accession_number': filing_context.get('accession', ''),
                         'section_type': filing_context.get('section', ''),
-                        'entity_text': mention['text'],
+                        'entity_text': entity_name,
                         'entity_type': entity_type,
                         'char_start': mention['start'],
                         'char_end': mention['end'],
                         'confidence_score': mention['score'],
                         'canonical_name': canonical_name,
-                        'entity_id': entity_id,
-                        'is_new_entity': is_new,  # Flag to indicate if this is first mention
+                        'entity_id': mention_entity_id,           # Mention-specific UUID
+                        'canonical_entity_id': canonical_entity_id,  # Canonical UUID for network
+                        'is_new_entity': is_new,  # Flag for canonical UUID creation
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': coreference_data,  # Includes normalized_entity_id
                         'surrounding_text': surrounding_text,  # Add context window around entity

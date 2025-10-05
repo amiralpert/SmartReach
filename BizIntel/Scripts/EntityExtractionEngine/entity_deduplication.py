@@ -137,58 +137,114 @@ def find_entity_by_canonical_name(
     return None
 
 
-def find_or_create_entity_id(
+def find_or_create_canonical_id(
+    entity_name: str,
     canonical_name: str,
     entity_type: str,
     db_cursor,
     fuzzy_threshold: float = 0.85
 ) -> Tuple[str, bool]:
     """
-    Find existing entity or signal to create new one
+    Find existing canonical entity ID or create new one via entity_name_resolution table
 
     Args:
-        canonical_name: The canonical name to search for
+        entity_name: The actual entity text extracted (may be variant)
+        canonical_name: The normalized canonical form
         entity_type: Entity type
         db_cursor: Active database cursor
         fuzzy_threshold: Similarity threshold for fuzzy matching
 
     Returns:
-        Tuple of (entity_id, is_new) where:
-            - entity_id: UUID string (existing or new)
-            - is_new: True if new UUID should be created, False if reusing existing
+        Tuple of (canonical_entity_id, is_new) where:
+            - canonical_entity_id: UUID string (existing or new canonical UUID)
+            - is_new: True if new canonical UUID created, False if reusing existing
     """
     import uuid
 
-    # Try to find existing entity
-    existing = find_entity_by_canonical_name(canonical_name, entity_type, db_cursor, fuzzy_threshold)
+    # Step 1: Check entity_name_resolution for exact entity_name match
+    db_cursor.execute("""
+        SELECT canonical_entity_id, canonical_name
+        FROM system_uno.entity_name_resolution
+        WHERE entity_name = %s AND entity_type = %s
+        LIMIT 1
+    """, (entity_name, entity_type))
 
-    if existing:
-        entity_id, matched_name = existing
-        return (entity_id, False)  # Reuse existing UUID
+    result = db_cursor.fetchone()
+    if result:
+        # Found exact match for this entity_name variant
+        return (result[0], False)
 
-    # No match found - signal to create new entity
-    new_id = str(uuid.uuid4())
-    return (new_id, True)
+    # Step 2: Check for canonical_name match (different variant, same entity)
+    db_cursor.execute("""
+        SELECT canonical_entity_id
+        FROM system_uno.entity_name_resolution
+        WHERE canonical_name = %s AND entity_type = %s
+        LIMIT 1
+    """, (canonical_name, entity_type))
+
+    result = db_cursor.fetchone()
+    if result:
+        # Found canonical match - add this variant to resolution table
+        canonical_entity_id = result[0]
+        add_name_variant_to_resolution(entity_name, canonical_name, canonical_entity_id,
+                                      entity_type, 'exact_match', 1.0, db_cursor)
+        return (canonical_entity_id, False)
+
+    # Step 3: Try fuzzy matching for company entities
+    if entity_type in ['Filing Company', 'Private Company', 'Public Company', 'Organization', 'ORGANIZATION']:
+        normalized_search = normalize_company_name(canonical_name)
+
+        # Get all company entities for fuzzy matching
+        db_cursor.execute("""
+            SELECT DISTINCT canonical_entity_id, canonical_name
+            FROM system_uno.entity_name_resolution
+            WHERE entity_type IN ('Filing Company', 'Private Company', 'Public Company', 'Organization', 'ORGANIZATION')
+        """)
+
+        candidates = db_cursor.fetchall()
+        best_match = None
+        best_score = 0.0
+
+        for existing_id, existing_canonical in candidates:
+            normalized_existing = normalize_company_name(existing_canonical)
+            similarity = calculate_similarity(normalized_search, normalized_existing)
+
+            if similarity > best_score:
+                best_score = similarity
+                best_match = (existing_id, existing_canonical)
+
+        # Return best match if above threshold
+        if best_match and best_score >= fuzzy_threshold:
+            canonical_entity_id = best_match[0]
+            add_name_variant_to_resolution(entity_name, best_match[1], canonical_entity_id,
+                                          entity_type, 'fuzzy_match', best_score, db_cursor)
+            return (canonical_entity_id, False)
+
+    # Step 4: No match found - create NEW canonical UUID
+    new_canonical_id = str(uuid.uuid4())
+    add_name_variant_to_resolution(entity_name, canonical_name, new_canonical_id,
+                                   entity_type, 'new_entity', 1.0, db_cursor)
+    return (new_canonical_id, True)
 
 
-def add_to_name_resolution_table(
+def add_name_variant_to_resolution(
     entity_name: str,
     canonical_name: str,
-    entity_id: str,
+    canonical_entity_id: str,
     entity_type: str,
     resolution_method: str,
     confidence: float,
     db_cursor
 ) -> bool:
     """
-    Add entity name to relationship_entities table for future lookups
+    Add entity name variant to entity_name_resolution table
 
     Args:
         entity_name: The actual text extracted (may be variant)
         canonical_name: The canonical/normalized form
-        entity_id: The UUID assigned to this entity
+        canonical_entity_id: The canonical UUID for this entity
         entity_type: Entity type
-        resolution_method: 'exact_match', 'fuzzy_match', 'auto_created'
+        resolution_method: 'exact_match', 'fuzzy_match', 'new_entity'
         confidence: Match confidence (1.0 for exact, <1.0 for fuzzy)
         db_cursor: Active database cursor
 
@@ -196,32 +252,31 @@ def add_to_name_resolution_table(
         True if successful, False otherwise
     """
     try:
-        # Check if this exact mapping already exists
+        # Check if this exact variant already exists
         db_cursor.execute("""
-            SELECT resolution_id, occurrence_count
-            FROM system_uno.relationship_entities
-            WHERE entity_name = %s AND entity_id = %s
-        """, (entity_name, entity_id))
+            SELECT occurrence_count
+            FROM system_uno.entity_name_resolution
+            WHERE entity_name = %s AND canonical_entity_id = %s
+        """, (entity_name, canonical_entity_id))
 
         existing = db_cursor.fetchone()
 
         if existing:
-            # Update occurrence count
-            resolution_id, occurrence_count = existing
+            # Update occurrence count and last seen
             db_cursor.execute("""
-                UPDATE system_uno.relationship_entities
+                UPDATE system_uno.entity_name_resolution
                 SET occurrence_count = occurrence_count + 1,
                     last_seen_at = CURRENT_TIMESTAMP
-                WHERE resolution_id = %s
-            """, (resolution_id,))
+                WHERE entity_name = %s AND canonical_entity_id = %s
+            """, (entity_name, canonical_entity_id))
         else:
-            # Insert new resolution record
+            # Insert new variant
             db_cursor.execute("""
-                INSERT INTO system_uno.relationship_entities (
+                INSERT INTO system_uno.entity_name_resolution (
                     entity_name,
                     entity_name_normalized,
                     canonical_name,
-                    entity_id,
+                    canonical_entity_id,
                     entity_type,
                     resolution_method,
                     confidence,
@@ -231,7 +286,7 @@ def add_to_name_resolution_table(
                 entity_name,
                 entity_name.lower().strip(),
                 canonical_name,
-                entity_id,
+                canonical_entity_id,
                 entity_type,
                 resolution_method,
                 confidence
@@ -240,5 +295,5 @@ def add_to_name_resolution_table(
         return True
 
     except Exception as e:
-        print(f"⚠️ Failed to add to relationship_entities table: {e}")
+        print(f"⚠️ Failed to add to entity_name_resolution table: {e}")
         return False
