@@ -37,7 +37,6 @@ except Exception as e:
 from .gliner_config import GLINER_CONFIG
 from .gliner_normalization import normalize_entities, group_similar_entities
 from .logging_utils import log_info, log_warning, log_error
-from .entity_deduplication import find_or_create_canonical_id
 
 @dataclass
 class GLiNEREntity:
@@ -476,23 +475,9 @@ class GLiNEREntityExtractor:
                     # Generate mention-specific UUID (every mention gets unique ID)
                     mention_entity_id = str(uuid.uuid4())
 
-                    # Find or create canonical UUID via entity_name_resolution
-                    if db_cursor:
-                        try:
-                            canonical_entity_id, is_new = find_or_create_canonical_id(
-                                entity_name, canonical_name, entity_type, db_cursor
-                            )
-                            if not is_new and self.debug:
-                                print(f"  ♻️  Reusing canonical UUID for '{canonical_name}' ({entity_type})")
-                        except Exception as e:
-                            if self.debug:
-                                print(f"  ⚠️ Deduplication failed: {e}, creating new canonical UUID")
-                            canonical_entity_id = str(uuid.uuid4())
-                            is_new = True
-                    else:
-                        # No cursor provided - create new canonical UUID (backward compatibility)
-                        canonical_entity_id = str(uuid.uuid4())
-                        is_new = True
+                    # NOTE: canonical_entity_id will be populated by pipeline_storage.py
+                    # in the same transaction as the sec_entities_raw INSERT
+                    # This ensures entity_name_resolution and sec_entities_raw are committed together
 
                     # Each database record (mention-specific)
                     entity_record = {
@@ -505,8 +490,8 @@ class GLiNEREntityExtractor:
                         'confidence_score': mention['score'],
                         'canonical_name': canonical_name,
                         'entity_id': mention_entity_id,           # Mention-specific UUID
-                        'canonical_entity_id': canonical_entity_id,  # Canonical UUID for network
-                        'is_new_entity': is_new,  # Flag for canonical UUID creation
+                        'canonical_entity_id': None,              # Will be set by pipeline_storage
+                        'is_new_entity': True,                    # Will be updated by pipeline_storage
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': coreference_data,  # Includes normalized_entity_id
                         'surrounding_text': surrounding_text,  # Add context window around entity

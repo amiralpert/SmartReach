@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, List
 from psycopg2.extras import execute_values
 from .database_utils import get_db_connection
+from .entity_deduplication import find_or_create_canonical_id
 
 
 class PipelineEntityStorage:
@@ -57,9 +58,31 @@ class PipelineEntityStorage:
                     else:
                         existing_entities.append(entity)
 
-                # INSERT new entities
+                # INSERT new entities with canonical UUID lookup in SAME transaction
                 if new_entities:
-                    entity_records = [self._prepare_entity_record(e, filing_ref) for e in new_entities]
+                    # Process each entity to get canonical UUID and prepare record
+                    entity_records = []
+                    for entity in new_entities:
+                        # Get canonical UUID using same cursor (same transaction)
+                        entity_name = entity.get('entity_text', '')
+                        canonical_name = entity.get('canonical_name', entity_name)
+                        entity_type = entity.get('entity_type', 'UNKNOWN')
+
+                        try:
+                            canonical_entity_id, is_new = find_or_create_canonical_id(
+                                entity_name, canonical_name, entity_type, cursor
+                            )
+                            # Update entity with canonical UUID
+                            entity['canonical_entity_id'] = canonical_entity_id
+                            entity['is_new_entity'] = is_new
+                        except Exception as e:
+                            print(f"      ⚠️ Canonical UUID lookup failed for '{entity_name}': {e}")
+                            # Fallback: create new canonical UUID
+                            entity['canonical_entity_id'] = str(uuid.uuid4())
+                            entity['is_new_entity'] = True
+
+                        # Prepare record for batch insert
+                        entity_records.append(self._prepare_entity_record(entity, filing_ref))
 
                     insert_query = """
                         INSERT INTO system_uno.sec_entities_raw (
@@ -73,7 +96,7 @@ class PipelineEntityStorage:
                     """
 
                     execute_values(cursor, insert_query, entity_records, template=None, page_size=100)
-                    print(f"   ➕ Inserted {len(new_entities)} new entities")
+                    print(f"   ➕ Inserted {len(new_entities)} new entities with canonical UUIDs")
 
                 # UPDATE existing entities (increment mention count, update last_seen_at)
                 if existing_entities:
