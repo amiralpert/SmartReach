@@ -37,6 +37,7 @@ except Exception as e:
 from .gliner_config import GLINER_CONFIG
 from .gliner_normalization import normalize_entities, group_similar_entities
 from .logging_utils import log_info, log_warning, log_error
+from .entity_deduplication import find_or_create_entity_id, add_to_name_resolution_table
 
 @dataclass
 class GLiNEREntity:
@@ -383,7 +384,7 @@ class GLiNEREntityExtractor:
         return normalize_entities(raw_entities, filing_context or {}, config)
 
     def extract_with_relationships(self, text: str, filing_context: Dict = None,
-                                 include_full_text: bool = True) -> Dict:
+                                 include_full_text: bool = True, db_cursor=None) -> Dict:
         """
         Complete extraction pipeline with entities, relationships, and database-ready format
 
@@ -391,6 +392,7 @@ class GLiNEREntityExtractor:
             text: Input text for extraction
             filing_context: Filing metadata (accession, company, etc.)
             include_full_text: Whether to include full text in output
+            db_cursor: Database cursor for entity deduplication lookups (optional)
 
         Returns:
             Dictionary ready for database storage in system_uno.sec_entities_raw format
@@ -400,7 +402,15 @@ class GLiNEREntityExtractor:
         try:
             # Extract entities
             raw_entities = self.extract_entities(text)
-            normalized_entities = self.normalize_entities(raw_entities, filing_context or {},
+
+            # FILTER OUT DATE ENTITIES before normalization
+            filtered_entities = [e for e in raw_entities if e.get('label', '') != 'Date']
+            if len(raw_entities) != len(filtered_entities):
+                dates_filtered = len(raw_entities) - len(filtered_entities)
+                if self.debug:
+                    print(f"  Filtered out {dates_filtered} Date entities (will be stored as edge metadata only)")
+
+            normalized_entities = self.normalize_entities(filtered_entities, filing_context or {},
                                                        GLINER_CONFIG['normalization'])
 
             # Extract relationships
@@ -426,17 +436,40 @@ class GLiNEREntityExtractor:
                     text_end = min(len(text), mention['end'] + window_size)
                     surrounding_text = text[text_start:text_end]
 
-                    # Each database record needs its own unique entity_id
+                    # Entity deduplication: check if canonical_name exists before creating UUID
+                    canonical_name = entity.get('canonical_name', mention['text'])
+                    entity_type = mention['label']
+
+                    # Use deduplication if database cursor provided
+                    if db_cursor:
+                        try:
+                            entity_id, is_new = find_or_create_entity_id(
+                                canonical_name, entity_type, db_cursor
+                            )
+                            if not is_new and self.debug:
+                                print(f"  ♻️  Reusing UUID for '{canonical_name}' ({entity_type})")
+                        except Exception as e:
+                            if self.debug:
+                                print(f"  ⚠️ Deduplication failed: {e}, creating new UUID")
+                            entity_id = str(uuid.uuid4())
+                            is_new = True
+                    else:
+                        # No cursor provided - create new UUID (backward compatibility)
+                        entity_id = str(uuid.uuid4())
+                        is_new = True
+
+                    # Each database record
                     entity_record = {
                         'accession_number': filing_context.get('accession', ''),
                         'section_type': filing_context.get('section', ''),
                         'entity_text': mention['text'],
-                        'entity_type': mention['label'],
+                        'entity_type': entity_type,
                         'char_start': mention['start'],
                         'char_end': mention['end'],
                         'confidence_score': mention['score'],
-                        'canonical_name': entity.get('canonical_name', mention['text']),
-                        'entity_id': str(uuid.uuid4()),  # Unique ID for each database row
+                        'canonical_name': canonical_name,
+                        'entity_id': entity_id,
+                        'is_new_entity': is_new,  # Flag to indicate if this is first mention
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': coreference_data,  # Includes normalized_entity_id
                         'surrounding_text': surrounding_text,  # Add context window around entity

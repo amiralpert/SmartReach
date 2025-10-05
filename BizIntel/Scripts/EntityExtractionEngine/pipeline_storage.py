@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, List
 from psycopg2.extras import execute_values
 from .database_utils import get_db_connection
+from .entity_deduplication import add_to_name_resolution_table
 
 
 class PipelineEntityStorage:
@@ -25,7 +26,7 @@ class PipelineEntityStorage:
         }
     
     def store_entities(self, entities: List[Dict], filing_data: Dict) -> bool:
-        """Store entities with enhanced tracking"""
+        """Store entities with deduplication support (UPDATE existing, INSERT new)"""
         if not entities:
             return True
 
@@ -44,44 +45,77 @@ class PipelineEntityStorage:
                 sslmode='require'
             ) as conn:
                 cursor = conn.cursor()
-                
-                # Store entities to database
-                
-                # Prepare entities for batch insert
-                entity_records = []
-                # Get filing_ref from filing_data
+
+                # Separate new entities from existing entities
+                new_entities = []
+                existing_entities = []
+
                 filing_ref = f"SEC_{filing_data.get('id', 'UNKNOWN')}" if isinstance(filing_data, dict) else filing_data
+
                 for entity in entities:
-                    record = self._prepare_entity_record(entity, filing_ref)
-                    entity_records.append(record)
-                
-                # Batch insert (matching actual table schema)
-                insert_query = """
-                    INSERT INTO system_uno.sec_entities_raw (
-                        entity_id, entity_text, canonical_name, entity_type,
-                        gliner_entity_id, accession_number, company_domain, filing_type,
-                        filing_date, section_name, character_start, character_end,
-                        surrounding_context, confidence_score, coreference_group,
-                        basic_relationships, extraction_timestamp, gliner_model_version
-                    ) VALUES %s
-                """
-                
-                execute_values(cursor, insert_query, entity_records, template=None, page_size=100)
-                
+                    if entity.get('is_new_entity', True):  # Default to True for backward compatibility
+                        new_entities.append(entity)
+                    else:
+                        existing_entities.append(entity)
+
+                # INSERT new entities
+                if new_entities:
+                    entity_records = [self._prepare_entity_record(e, filing_ref) for e in new_entities]
+
+                    insert_query = """
+                        INSERT INTO system_uno.sec_entities_raw (
+                            entity_id, entity_text, canonical_name, entity_type,
+                            gliner_entity_id, accession_number, company_domain, filing_type,
+                            filing_date, section_name, character_start, character_end,
+                            surrounding_context, confidence_score, coreference_group,
+                            basic_relationships, extraction_timestamp, gliner_model_version,
+                            mention_count, first_seen_at, last_seen_at
+                        ) VALUES %s
+                    """
+
+                    execute_values(cursor, insert_query, entity_records, template=None, page_size=100)
+                    print(f"   ➕ Inserted {len(new_entities)} new entities")
+
+                # UPDATE existing entities (increment mention count, update last_seen_at)
+                if existing_entities:
+                    for entity in existing_entities:
+                        cursor.execute("""
+                            UPDATE system_uno.sec_entities_raw
+                            SET mention_count = mention_count + 1,
+                                last_seen_at = CURRENT_TIMESTAMP
+                            WHERE entity_id = %s
+                        """, (entity.get('entity_id'),))
+
+                    print(f"   ♻️  Updated {len(existing_entities)} existing entities (incremented mention_count)")
+
+                # Add all entities to name resolution table
+                for entity in entities:
+                    add_to_name_resolution_table(
+                        entity_name=entity.get('entity_text', ''),
+                        canonical_name=entity.get('canonical_name', ''),
+                        entity_id=entity.get('entity_id'),
+                        entity_type=entity.get('entity_type', ''),
+                        resolution_method='exact_match' if entity.get('is_new_entity', True) else 'reused',
+                        confidence=1.0,
+                        db_cursor=cursor
+                    )
+
                 conn.commit()
                 self.storage_stats['transactions_completed'] += 1
                 self.storage_stats['entities_stored'] += len(entities)
-                
+
                 # Count merged vs single entities
                 merged_count = sum(1 for e in entities if e.get('is_merged', False))
                 self.storage_stats['merged_entities'] += merged_count
                 self.storage_stats['single_model_entities'] += (len(entities) - merged_count)
-                
+
                 # Successfully stored entities
                 return True
-                
+
         except Exception as e:
             print(f"   ❌ Entity storage failed: {e}")
+            import traceback
+            traceback.print_exc()
             self.storage_stats['transactions_failed'] += 1
             return False
     
@@ -120,7 +154,10 @@ class PipelineEntityStorage:
             coreference_group,                              # coreference_group (JSONB)
             basic_relationships,                            # basic_relationships (JSONB)
             entity.get('extraction_timestamp', datetime.now()), # extraction_timestamp
-            entity.get('gliner_model_version', 'gliner_medium-v2.1') # gliner_model_version
+            entity.get('gliner_model_version', 'gliner_medium-v2.1'), # gliner_model_version
+            1,                                              # mention_count (default 1 for new entities)
+            datetime.now(),                                 # first_seen_at
+            datetime.now()                                  # last_seen_at
         )
     
     def _calculate_quality_score(self, entity: Dict) -> float:
