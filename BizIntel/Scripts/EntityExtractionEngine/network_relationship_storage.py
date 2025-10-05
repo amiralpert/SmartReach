@@ -7,7 +7,7 @@ import uuid
 import json
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-from .entity_deduplication import find_entity_by_canonical_name, add_to_name_resolution_table
+from .entity_deduplication import find_entity_by_canonical_name
 
 
 class NetworkRelationshipStorage:
