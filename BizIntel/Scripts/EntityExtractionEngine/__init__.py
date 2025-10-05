@@ -17,6 +17,8 @@ from .entity_extraction_pipeline import EntityExtractionPipeline
 from .relationship_extractor import RelationshipExtractor
 from .semantic_storage import SemanticRelationshipStorage
 from .pipeline_storage import PipelineEntityStorage
+from .network_relationship_storage import NetworkRelationshipStorage
+from .entity_deduplication import find_entity_by_canonical_name, find_or_create_entity_id, add_to_name_resolution_table
 from .batch_processor import process_filings_batch
 from .analytics_reporter import generate_pipeline_analytics_report
 from .pipeline_orchestrator import execute_main_pipeline, display_pipeline_results, display_no_filings_message
@@ -41,7 +43,7 @@ except ImportError:
 
 __all__ = [
     'SEC_FILINGS_PROMPT',
-    'SizeLimitedLRUCache', 
+    'SizeLimitedLRUCache',
     'log_error',
     'log_warning',
     'log_info',
@@ -52,7 +54,7 @@ __all__ = [
     'MAX_HTML_SIZE',
     'get_filing_sections',
     'find_filing_with_timeout',
-    'get_html_with_timeout', 
+    'get_html_with_timeout',
     'parse_html_with_timeout',
     'route_sections_to_models',
     'process_sec_filing_with_sections',
@@ -61,6 +63,10 @@ __all__ = [
     'RelationshipExtractor',
     'SemanticRelationshipStorage',
     'PipelineEntityStorage',
+    'NetworkRelationshipStorage',
+    'find_entity_by_canonical_name',
+    'find_or_create_entity_id',
+    'add_to_name_resolution_table',
     'process_filings_batch',
     'generate_pipeline_analytics_report',
     'execute_main_pipeline',

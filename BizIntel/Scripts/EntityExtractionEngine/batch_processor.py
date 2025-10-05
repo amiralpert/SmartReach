@@ -11,7 +11,7 @@ from .database_queries import get_unprocessed_filings
 _STORAGE_FAILURES = {'count': 0, 'last_reset': time.time()}
 
 def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_storage,
-                         semantic_storage, config: Dict, limit: int = None) -> Dict:
+                         semantic_storage, network_storage, config: Dict, limit: int = None) -> Dict:
     """Process multiple SEC filings with both entity and relationship extraction"""
     if limit is None:
         limit = config['processing']['filing_batch_size']
@@ -123,14 +123,40 @@ def process_filings_batch(entity_pipeline, relationship_extractor, pipeline_stor
             if config['processing']['enable_relationships']:
                 print(f"   🦙 Calling Llama relationship extractor with {len(entities)} entities...")
                 relationships = relationship_extractor.extract_company_relationships(entities)
-                
-                # Store relationships (pass full filing_data for company_domain)
+
+                # Store relationships to BOTH old and new tables (parallel storage during transition)
                 if relationships:
+                    # OLD storage: semantic buckets (keep for now)
                     relationship_storage_success = semantic_storage.store_relationships_with_buckets(
                         relationships, filing_data
                     )
                     if not relationship_storage_success:
-                        print("   ⚠️ Relationship storage failed")
+                        print("   ⚠️ Semantic relationship storage failed")
+
+                    # NEW storage: network edges (dual-edge graph)
+                    try:
+                        import psycopg2
+                        from kaggle_secrets import UserSecretsClient
+
+                        user_secrets = UserSecretsClient()
+                        with psycopg2.connect(
+                            host=user_secrets.get_secret("NEON_HOST"),
+                            database=user_secrets.get_secret("NEON_DATABASE"),
+                            user=user_secrets.get_secret("NEON_USER"),
+                            password=user_secrets.get_secret("NEON_PASSWORD"),
+                            port=5432,
+                            sslmode='require'
+                        ) as conn:
+                            cursor = conn.cursor()
+                            network_storage_success = network_storage.store_relationship_edges(
+                                relationships, filing_data, cursor
+                            )
+                            conn.commit()
+
+                            if not network_storage_success:
+                                print("   ⚠️ Network edge storage failed")
+                    except Exception as network_error:
+                        print(f"   ⚠️ Network storage error: {network_error}")
             
             # Success
             processing_time = time.time() - filing_start
