@@ -244,30 +244,43 @@ Entity {entity_id}:
 
             json_str = response[json_start:json_end]
 
-            # Try to parse as-is first
+            # Tier 1: Try to parse as-is first (fast path)
             try:
                 llama_data = json.loads(json_str)
             except json.JSONDecodeError as e:
                 print(f"         ⚠️ JSON parsing failed: {e}")
-                print(f"         🔧 Attempting to repair JSON...")
 
-                # Common fixes for Llama JSON errors
-                repaired = json_str
-
-                # Fix 1: Remove trailing commas before closing braces
-                repaired = repaired.replace(',}', '}').replace(',]', ']')
-
-                # Fix 2: Ensure proper comma placement between array entries
-                repaired = repaired.replace('}\n    {', '},\n    {')
-                repaired = repaired.replace('} {', '}, {')
-
-                # Try parsing repaired JSON
+                # Tier 2: Use json-repair library (handles most LLM formatting issues)
                 try:
-                    llama_data = json.loads(repaired)
-                    print(f"         ✅ JSON repaired successfully")
+                    from json_repair import repair_json
+                    print(f"         🔧 Attempting JSON repair with json-repair library...")
+                    repaired_str = repair_json(json_str)
+                    llama_data = json.loads(repaired_str)
+                    print(f"         ✅ JSON repaired successfully with json-repair library")
+                except ImportError:
+                    print(f"         ⚠️ json-repair library not installed, falling back to regex fixes")
+                    # Tier 3: Fallback to legacy regex fixes
+                    repaired = json_str
+
+                    # Fix 1: Remove trailing commas before closing braces
+                    repaired = repaired.replace(',}', '}').replace(',]', ']')
+
+                    # Fix 2: Ensure proper comma placement between array entries
+                    repaired = repaired.replace('}\n    {', '},\n    {')
+                    repaired = repaired.replace('} {', '}, {')
+
+                    try:
+                        llama_data = json.loads(repaired)
+                        print(f"         ✅ JSON repaired with regex fixes")
+                    except json.JSONDecodeError as repair_error:
+                        print(f"         ❌ All repair attempts failed: {repair_error}")
+                        # Log a sample of the problematic JSON for debugging
+                        sample = json_str[:500] if len(json_str) > 500 else json_str
+                        print(f"         📄 JSON sample: {sample}...")
+                        return []
                 except json.JSONDecodeError as repair_error:
-                    print(f"         ❌ JSON repair failed: {repair_error}")
-                    # Log a sample of the problematic JSON for debugging
+                    print(f"         ❌ json-repair library failed: {repair_error}")
+                    # Log a sample for debugging
                     sample = json_str[:500] if len(json_str) > 500 else json_str
                     print(f"         📄 JSON sample: {sample}...")
                     return []

@@ -122,16 +122,14 @@ class NetworkRelationshipStorage:
             # Promote to relationship_entities using CANONICAL UUID
             db_cursor.execute("""
                 INSERT INTO system_uno.relationship_entities (
-                    entity_id, entity_name, entity_name_normalized, canonical_name,
-                    entity_type, source_type, confidence, resolution_method,
+                    entity_id, canonical_name, entity_type, source_type, confidence,
                     accession_number, section_name,
                     character_position_start, character_position_end
-                ) VALUES (%s, %s, %s, %s, %s, 'gliner_extracted', %s, 'canonical_promotion', %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, 'gliner_extracted', %s, %s, %s, %s, %s)
                 ON CONFLICT (entity_id) DO NOTHING
             """, (
-                canonical_entity_id, entity_text, entity_text.lower().strip(), canonical_name,
-                entity_type, confidence, accession_number,
-                section_name, char_start, char_end
+                canonical_entity_id, canonical_name, entity_type, confidence,
+                accession_number, section_name, char_start, char_end
             ))
 
             print(f"      ✓ Promoted to network: {canonical_name} ({entity_type}) [{canonical_entity_id[:8]}...]")
@@ -192,13 +190,10 @@ class NetworkRelationshipStorage:
 
             db_cursor.execute("""
                 INSERT INTO system_uno.relationship_entities (
-                    entity_id, entity_name, entity_name_normalized, canonical_name,
-                    entity_type, source_type, confidence, resolution_method
-                ) VALUES (%s, %s, %s, %s, 'UNKNOWN', 'llama_inferred', 0.6, 'llama_inferred')
+                    entity_id, canonical_name, entity_type, source_type, confidence
+                ) VALUES (%s, %s, 'UNKNOWN', 'llama_inferred', 0.6)
             """, (
                 new_entity_id,
-                target_name,
-                target_name.lower().strip(),
                 target_name
             ))
 
