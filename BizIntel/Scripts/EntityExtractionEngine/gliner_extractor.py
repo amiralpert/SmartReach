@@ -465,7 +465,7 @@ class GLiNEREntityExtractor:
                     window_size = 200  # characters before and after
                     text_start = max(0, mention['start'] - window_size)
                     text_end = min(len(text), mention['end'] + window_size)
-                    surrounding_text = text[text_start:text_end]
+                    surrounding_context = text[text_start:text_end]
 
                     # Get canonical info
                     canonical_name = entity.get('canonical_name', mention['text'])
@@ -494,7 +494,7 @@ class GLiNEREntityExtractor:
                         'is_new_entity': True,                    # Will be updated by pipeline_storage
                         'gliner_entity_id': f"E{mention.get('start', 0):06d}",  # Position-based ID for reference
                         'coreference_group': coreference_data,  # Includes normalized_entity_id
-                        'surrounding_text': surrounding_text,  # Add context window around entity
+                        'surrounding_context': surrounding_context,  # Add context window around entity
                         'basic_relationships': [r for r in relationships
                                               if r['head_entity'] == mention['text'] or
                                                  r['tail_entity'] == mention['text']],
