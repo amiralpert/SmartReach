@@ -181,12 +181,19 @@ Entity {entity_id}:
 
             # Use centralized prompt from CONFIG
             prompt = self.config['llama']['SEC_FilingsPrompt'].format(entities_text=entities_text)
-            
+
+            # DEBUG: Print entities_text length and sample
+            print(f"         📊 Built entities_text: {len(entities_text)} chars, {len(entities_batch)} entities")
+            print(f"         📝 Entities sample (first 500 chars): {entities_text[:500]}...")
+
             # Create messages for chat format
             messages = [
                 {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
                 {"role": "user", "content": prompt}
             ]
+
+            # DEBUG: Print final prompt length
+            print(f"         📏 Final prompt length: {len(prompt)} chars")
             
             # Apply chat template
             inputs = self.tokenizer.apply_chat_template(
