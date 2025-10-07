@@ -383,6 +383,17 @@ class NetworkRelationshipStorage:
                 return None
             return date_str
 
+        # Parse numeric values (handle None and non-numeric text)
+        def parse_numeric(value):
+            if not value or value == 'null':
+                return None
+            # Try to convert to float
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                # If conversion fails, return None (Llama may return descriptive text)
+                return None
+
         db_cursor.execute("""
             INSERT INTO system_uno.relationship_edges (
                 edge_id, source_entity_id, target_entity_id,
@@ -400,8 +411,8 @@ class NetworkRelationshipStorage:
         """, (
             edge_id, source_id, target_id,
             relationship_type, edge_label, edge_data.get('detailed_summary', ''),
-            edge_data.get('deal_terms'), edge_data.get('monetary_value'),
-            edge_data.get('equity_percentage'), edge_data.get('royalty_rate'),
+            edge_data.get('deal_terms'), parse_numeric(edge_data.get('monetary_value')),
+            parse_numeric(edge_data.get('equity_percentage')), parse_numeric(edge_data.get('royalty_rate')),
             technology_names, product_names, therapeutic_areas,
             parse_date(edge_data.get('event_date')),
             parse_date(edge_data.get('agreement_date')),
