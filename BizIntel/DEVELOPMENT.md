@@ -88,6 +88,7 @@ BizIntel extracts entities and relationships from SEC filings to build a busines
   - Review generic Persons (e.g., "Jake Orville", "Sarah Condella")
   - Decide on Person entity filtering strategy
   - Add entity quality scoring based on context
+  - context windows need to capture full sentences. 
 
 - [ ] **Llama prompt optimization**
   - Reduce hallucinations (validate entity existence before creating edges)
