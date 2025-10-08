@@ -81,12 +81,13 @@ def find_entity_by_canonical_name(
         return None
 
     # Step 1: Try exact match on canonical_name in relationship_entities
+    # If entity_type is 'UNKNOWN', ignore type constraint (allows matching any type)
     db_cursor.execute("""
         SELECT entity_id, canonical_name
         FROM system_uno.relationship_entities
-        WHERE canonical_name = %s AND entity_type = %s
+        WHERE canonical_name = %s AND (entity_type = %s OR %s = 'UNKNOWN')
         LIMIT 1
-    """, (canonical_name, entity_type))
+    """, (canonical_name, entity_type, entity_type))
 
     result = db_cursor.fetchone()
     if result:

@@ -170,7 +170,7 @@ class NetworkRelationshipStorage:
 
             # Step 2: Try to find in sec_entities_raw (needs promotion)
             db_cursor.execute("""
-                SELECT entity_id, canonical_name
+                SELECT canonical_entity_id, canonical_name
                 FROM system_uno.sec_entities_raw
                 WHERE canonical_name = %s OR LOWER(canonical_name) = LOWER(%s)
                 LIMIT 1
@@ -179,11 +179,11 @@ class NetworkRelationshipStorage:
             raw_entity = db_cursor.fetchone()
 
             if raw_entity:
-                # Found in archive - promote it
-                entity_id = raw_entity[0]
-                if self.promote_entity_to_network(entity_id, db_cursor):
+                # Found in archive - promote it using CANONICAL UUID
+                canonical_entity_id = raw_entity[0]
+                if self.promote_entity_to_network(canonical_entity_id, db_cursor):
                     self.stats['target_entities_resolved'] += 1
-                    return entity_id
+                    return canonical_entity_id
 
             # Step 3: Not found anywhere - create Llama-inferred stub
             new_entity_id = str(uuid.uuid4())
