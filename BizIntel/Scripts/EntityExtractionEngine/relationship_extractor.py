@@ -8,6 +8,7 @@ import json
 import torch
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from huggingface_hub import login
 try:
@@ -94,11 +95,11 @@ class RelationshipExtractor:
             self.tokenizer = None
     
     def extract_company_relationships(self, entities: List[Dict]) -> List[Dict]:
-        """Extract relationships for a batch of entities"""
+        """Extract relationships using individual entity processing with threading"""
         if not self.model or not self.tokenizer:
             print("   ⚠️ Llama model not available - skipping relationship extraction")
             return []
-        
+
         if not entities:
             return []
 
@@ -108,28 +109,37 @@ class RelationshipExtractor:
         if entities:
             print(f"   📝 Entity sample fields: {list(entities[0].keys())}")
 
-        relationships = []
+        # Check batch_size to determine processing mode
         batch_size = self.config['llama']['batch_size']
-        
-        # Process entities in batches
-        for i in range(0, len(entities), batch_size):
-            batch = entities[i:i+batch_size]
-            
-            # Get context for each entity in the batch
-            entities_with_context = []
-            for entity in batch:
-                context = self._get_entity_context(entity)
-                entities_with_context.append((entity, context, entity.get('section_name', 'unknown')))
-            
-            # Analyze batch with Llama
-            batch_relationships = self._analyze_relationship_batch(entities_with_context)
-            relationships.extend(batch_relationships)
-            
-            print(f"      📊 Batch {i//batch_size + 1}: {len(batch_relationships)} relationships found")
-        
+
+        if batch_size == 1:
+            # Individual entity processing with threading (eliminates hallucinations)
+            print(f"   🧵 Using threaded individual entity processing (hallucination-safe mode)")
+            relationships = self._extract_with_threading(entities)
+        else:
+            # Legacy batch processing (kept for backward compatibility)
+            print(f"   📦 Using legacy batch processing (batch_size={batch_size})")
+            relationships = []
+
+            # Process entities in batches
+            for i in range(0, len(entities), batch_size):
+                batch = entities[i:i+batch_size]
+
+                # Get context for each entity in the batch
+                entities_with_context = []
+                for entity in batch:
+                    context = self._get_entity_context(entity)
+                    entities_with_context.append((entity, context, entity.get('section_name', 'unknown')))
+
+                # Analyze batch with Llama
+                batch_relationships = self._analyze_relationship_batch(entities_with_context)
+                relationships.extend(batch_relationships)
+
+                print(f"      📊 Batch {i//batch_size + 1}: {len(batch_relationships)} relationships found")
+
         self.stats['entities_analyzed'] += len(entities)
         self.stats['relationships_extracted'] += len(relationships)
-        
+
         return relationships
     
     def _get_entity_context(self, entity: Dict) -> str:
@@ -145,7 +155,133 @@ class RelationshipExtractor:
             context = context[:max_chars]
 
         return context
-    
+
+    def _analyze_single_entity(self, entity: Dict, context: str, section_name: str) -> List[Dict]:
+        """Analyze a single entity for relationships (thread-safe)"""
+        if not self.model or not self.tokenizer:
+            return []
+
+        try:
+            # Build entity text for prompt
+            company_domain = entity.get("company_domain", "Unknown")
+
+            # Get normalized entity ID from coreference group if available
+            coreference_group = entity.get("coreference_group", {})
+            if isinstance(coreference_group, str):
+                try:
+                    import json
+                    coreference_group = json.loads(coreference_group)
+                except:
+                    coreference_group = {}
+
+            # Use normalized_entity_id for grouping, fallback to entity_id
+            normalized_id = coreference_group.get("normalized_entity_id")
+            entity_id = normalized_id if normalized_id else entity.get("entity_id", "E001")
+
+            entities_text = f"""
+Entity {entity_id}:
+- Company: {company_domain}
+- Entity: {entity["entity_text"]} (Type: {entity.get("entity_type", "UNKNOWN")})
+- Section: {section_name}
+- Context: {context[:400]}
+"""
+
+            # Use centralized prompt from CONFIG
+            prompt = self.config['llama']['SEC_FilingsPrompt'].format(entities_text=entities_text)
+
+            # Create messages for chat format
+            messages = [
+                {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
+                {"role": "user", "content": prompt}
+            ]
+
+            # Apply chat template
+            inputs = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                tokenize=True
+            )
+
+            # Move inputs to same device as model
+            inputs = inputs.to(next(self.model.parameters()).device)
+
+            # Generate response (thread-safe with torch.no_grad())
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    inputs,
+                    max_new_tokens=2000,
+                    temperature=self.config["llama"]["temperature"],
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id
+                )
+
+            # Decode response
+            llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+            # Extract just the assistant's response
+            if "assistant" in llama_response:
+                llama_response = llama_response.split("assistant")[-1].strip()
+
+            self.stats['llama_calls'] += 1
+
+            # Parse JSON response
+            relationships = self._parse_batch_llama_response(
+                llama_response,
+                [(entity, context, section_name)]
+            )
+
+            return relationships
+
+        except Exception as e:
+            print(f"         ⚠️ Single entity Llama analysis failed: {e}")
+            return []
+
+    def _extract_with_threading(self, entities: List[Dict]) -> List[Dict]:
+        """Extract relationships using threading for parallel processing"""
+        if not entities:
+            return []
+
+        max_workers = self.config['llama'].get('max_workers', 8)
+        print(f"   🔄 Processing {len(entities)} entities with {max_workers} parallel workers...")
+
+        relationships = []
+
+        # Prepare all entity tasks
+        entity_tasks = []
+        for entity in entities:
+            context = self._get_entity_context(entity)
+            section_name = entity.get('section_name', 'unknown')
+            entity_tasks.append((entity, context, section_name))
+
+        # Process entities in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_entity = {
+                executor.submit(self._analyze_single_entity, entity, context, section):
+                (entity, context, section)
+                for entity, context, section in entity_tasks
+            }
+
+            # Collect results as they complete
+            completed = 0
+            for future in as_completed(future_to_entity):
+                entity, context, section = future_to_entity[future]
+                try:
+                    entity_relationships = future.result()
+                    relationships.extend(entity_relationships)
+                    completed += 1
+
+                    # Progress indicator
+                    if completed % 5 == 0 or completed == len(entities):
+                        print(f"      📊 Progress: {completed}/{len(entities)} entities analyzed")
+
+                except Exception as e:
+                    print(f"      ⚠️ Entity analysis failed for {entity.get('entity_text', 'unknown')}: {e}")
+                    continue
+
+        print(f"   ✅ Threading complete: {len(relationships)} relationships found from {len(entities)} entities")
+        return relationships
+
     def _analyze_relationship_batch(self, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
         """Analyze multiple entities in a single Llama call for efficiency"""
         if not self.model or not self.tokenizer or not entities_batch:
