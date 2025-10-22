@@ -6,6 +6,7 @@ Local Llama 3.1-8B model for business relationship analysis from SEC filings.
 import uuid
 import json
 import torch
+import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,6 +33,7 @@ class RelationshipExtractor:
         self.config = config
         self.model = cached_model
         self.tokenizer = cached_tokenizer
+        self.tokenizer_lock = threading.Lock()  # Thread-safe tokenization
         self.stats = {
             'llama_calls': 0,
             'entities_analyzed': 0,
@@ -195,25 +197,45 @@ Entity {entity_id}:
                 {"role": "user", "content": prompt}
             ]
 
-            # Apply chat template
-            inputs = self.tokenizer.apply_chat_template(
-                messages,
-                return_tensors="pt",
-                tokenize=True
-            )
+            # Thread-safe tokenization with attention mask
+            with self.tokenizer_lock:
+                # Apply chat template and get full tokenization output
+                tokenized = self.tokenizer.apply_chat_template(
+                    messages,
+                    return_tensors="pt",
+                    add_generation_prompt=True,
+                    padding=True,
+                    return_dict=True  # Returns dict with input_ids and attention_mask
+                )
 
-            # Move inputs to same device as model
-            inputs = inputs.to(next(self.model.parameters()).device)
+            # Extract components and move to device
+            device = next(self.model.parameters()).device
+
+            # Handle both dict and tensor returns (for compatibility)
+            if isinstance(tokenized, dict):
+                input_ids = tokenized['input_ids'].to(device)
+                attention_mask = tokenized.get('attention_mask')
+                if attention_mask is not None:
+                    attention_mask = attention_mask.to(device)
+            else:
+                # Fallback if return_dict not supported
+                input_ids = tokenized.to(device)
+                attention_mask = None
 
             # Generate response (thread-safe with torch.no_grad())
             with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs,
-                    max_new_tokens=2000,
-                    temperature=self.config["llama"]["temperature"],
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
-                )
+                generate_kwargs = {
+                    'max_new_tokens': 2000,
+                    'temperature': self.config["llama"]["temperature"],
+                    'do_sample': True,
+                    'pad_token_id': self.tokenizer.eos_token_id
+                }
+
+                # Add attention mask if available
+                if attention_mask is not None:
+                    generate_kwargs['attention_mask'] = attention_mask
+
+                outputs = self.model.generate(input_ids, **generate_kwargs)
 
             # Decode response
             llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -233,7 +255,10 @@ Entity {entity_id}:
             return relationships
 
         except Exception as e:
-            print(f"         ⚠️ Single entity Llama analysis failed: {e}")
+            entity_name = entity.get('entity_text', 'unknown')
+            print(f"         ⚠️ Single entity Llama analysis failed for '{entity_name}': {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def _extract_with_threading(self, entities: List[Dict]) -> List[Dict]:
