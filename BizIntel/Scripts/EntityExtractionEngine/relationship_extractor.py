@@ -199,43 +199,38 @@ Entity {entity_id}:
 
             # Thread-safe tokenization with attention mask
             with self.tokenizer_lock:
-                # Apply chat template and get full tokenization output
-                tokenized = self.tokenizer.apply_chat_template(
+                # Apply chat template to get the formatted text
+                formatted_text = self.tokenizer.apply_chat_template(
                     messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+
+                # Tokenize with attention mask
+                tokenized = self.tokenizer(
+                    formatted_text,
                     return_tensors="pt",
-                    add_generation_prompt=True,
                     padding=True,
-                    return_dict=True  # Returns dict with input_ids and attention_mask
+                    truncation=True,
+                    max_length=2048,
+                    return_attention_mask=True
                 )
 
             # Extract components and move to device
             device = next(self.model.parameters()).device
-
-            # Handle both dict and tensor returns (for compatibility)
-            if isinstance(tokenized, dict):
-                input_ids = tokenized['input_ids'].to(device)
-                attention_mask = tokenized.get('attention_mask')
-                if attention_mask is not None:
-                    attention_mask = attention_mask.to(device)
-            else:
-                # Fallback if return_dict not supported
-                input_ids = tokenized.to(device)
-                attention_mask = None
+            input_ids = tokenized['input_ids'].to(device)
+            attention_mask = tokenized['attention_mask'].to(device)
 
             # Generate response (thread-safe with torch.no_grad())
             with torch.no_grad():
-                generate_kwargs = {
-                    'max_new_tokens': 2000,
-                    'temperature': self.config["llama"]["temperature"],
-                    'do_sample': True,
-                    'pad_token_id': self.tokenizer.eos_token_id
-                }
-
-                # Add attention mask if available
-                if attention_mask is not None:
-                    generate_kwargs['attention_mask'] = attention_mask
-
-                outputs = self.model.generate(input_ids, **generate_kwargs)
+                outputs = self.model.generate(
+                    input_ids,
+                    attention_mask=attention_mask,
+                    max_new_tokens=2000,
+                    temperature=self.config["llama"]["temperature"],
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id
+                )
 
             # Decode response
             llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
