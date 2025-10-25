@@ -139,15 +139,14 @@ Entity {entity_id}:
             # Use centralized prompt from CONFIG
             prompt = self.config['openai']['SEC_FilingsPrompt'].format(entities_text=entities_text)
 
-            # Call OpenAI API
+            # Call OpenAI API (GPT-5 Nano only supports temperature=1)
             response = self.client.chat.completions.create(
                 model=self.config['openai']['model_name'],
                 messages=[
                     {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=self.config['openai']['temperature'],
-                max_completion_tokens=self.config['openai']['max_tokens']  # GPT-5 uses max_completion_tokens
+                max_completion_tokens=self.config['openai']['max_tokens']  # GPT-5 uses max_completion_tokens, omit temperature (defaults to 1)
             )
 
             # Extract response text
