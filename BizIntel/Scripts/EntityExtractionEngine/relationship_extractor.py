@@ -6,7 +6,6 @@ Local Llama 3.1-8B model for business relationship analysis from SEC filings.
 import uuid
 import json
 import torch
-import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -33,7 +32,6 @@ class RelationshipExtractor:
         self.config = config
         self.model = cached_model
         self.tokenizer = cached_tokenizer
-        self.tokenizer_lock = threading.Lock()  # Thread-safe tokenization
         self.stats = {
             'llama_calls': 0,
             'entities_analyzed': 0,
@@ -198,23 +196,23 @@ Entity {entity_id}:
             ]
 
             # Thread-safe tokenization with attention mask
-            with self.tokenizer_lock:
-                # Apply chat template to get the formatted text
-                formatted_text = self.tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
+            # Note: Hugging Face tokenizers are thread-safe for read operations
+            # Apply chat template to get the formatted text
+            formatted_text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
 
-                # Tokenize with attention mask
-                tokenized = self.tokenizer(
-                    formatted_text,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True,
-                    max_length=2048,
-                    return_attention_mask=True
-                )
+            # Tokenize with attention mask (thread-safe - no lock needed)
+            tokenized = self.tokenizer(
+                formatted_text,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=2048,
+                return_attention_mask=True
+            )
 
             # Extract components and move to device
             device = next(self.model.parameters()).device
