@@ -128,12 +128,15 @@ class RelationshipExtractor:
             normalized_id = coreference_group.get("normalized_entity_id")
             entity_id = normalized_id if normalized_id else entity.get("entity_id", "E001")
 
+            # Get context window size from config (default 1000 chars for better relationship detection)
+            context_window = self.config.get('processing', {}).get('context_window_chars', 1000)
+
             entities_text = f"""
 Entity {entity_id}:
 - Company: {company_domain}
 - Entity: {entity["entity_text"]} (Type: {entity.get("entity_type", "UNKNOWN")})
 - Section: {section_name}
-- Context: {context[:400]}
+- Context: {context[:context_window]}
 """
 
             # Use centralized prompt from CONFIG
