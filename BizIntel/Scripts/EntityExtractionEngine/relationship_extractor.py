@@ -155,6 +155,14 @@ Entity {entity_id}:
 
             self.stats['api_calls'] += 1
 
+            # DEBUG: Print first API response to see format
+            if self.stats['api_calls'] == 1:
+                print(f"         🔍 DEBUG - First GPT-5 Nano response ({len(api_response)} chars):")
+                print(f"         " + "="*70)
+                for line in api_response[:500].split('\n'):  # First 500 chars
+                    print(f"         {line}")
+                print(f"         " + "="*70)
+
             # Parse JSON response
             relationships = self._parse_batch_llama_response(
                 api_response,
