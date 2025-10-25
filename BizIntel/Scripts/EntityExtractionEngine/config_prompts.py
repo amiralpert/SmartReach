@@ -11,10 +11,11 @@ ENTITIES:
 {entities_text}
 
 YOUR TASK:
-1. Identify ALL explicit relationships in the context
+1. Identify ALL relationships mentioned in the context
 2. Decompose multi-entity relationships into binary edges (source → target pairs)
 3. Extract deal-structure details: What + Who + Terms + Value + Scope + Dates
-4. Return ONLY relationships with concrete business significance (no inferences)
+4. Include regulatory, compliance, governance, and employment relationships
+5. Return relationships with concrete business significance
 
 REQUIRED OUTPUT FORMAT (valid JSON only, no other text):
 {{
@@ -68,11 +69,14 @@ RELATIONSHIP TYPES (use ANY that apply, not limited to this list):
 - ACQUISITION: Mergers, acquisitions, buyouts
 - INVESTMENT: Equity investments, funding rounds
 - OWNERSHIP: Entity owns technology/product/IP
+- EMPLOYMENT: Employment agreements, officer appointments, role assignments
 - SUPPLIER: Supply chain relationships
 - CUSTOMER: Customer-vendor relationships
 - DEVELOPMENT: R&D collaborations
 - THERAPEUTIC_TARGET: Technology/drug targets disease/condition
-- REGULATORY: Regulatory approvals, clearances, restrictions
+- REGULATORY: Regulatory approvals, clearances, restrictions, compliance requirements
+- GOVERNANCE: Laws/regulations that govern entities or activities
+- COMPLIANCE: Entities subject to laws/regulations
 - COMPETITOR: Competitive relationships
 - CLINICAL_TRIAL: Clinical trial partnerships/sponsorships
 
@@ -102,7 +106,9 @@ DEAL DETAILS (extract if mentioned):
 
 IMPORTANT:
 - Return EMPTY array if NO relationships found: {{"edges": []}}
-- Only extract EXPLICIT relationships (no assumptions/inferences)
+- Extract relationships that are directly stated or clearly implied in the context
+- Include regulatory/compliance relationships when laws or regulations are mentioned
+- Include governance relationships when laws govern entities or activities
 - Each edge is atomic: exactly 2 entities connected
 - Be specific in detailed_summary (concrete facts, not vague statements)
 
