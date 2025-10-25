@@ -139,7 +139,7 @@ Entity {entity_id}:
             # Use centralized prompt from CONFIG
             prompt = self.config['openai']['SEC_FilingsPrompt'].format(entities_text=entities_text)
 
-            # Call OpenAI API (GPT-5 Nano only supports temperature=1, requires response_format for JSON)
+            # Call OpenAI API with temperature control for better extraction
             response = self.client.chat.completions.create(
                 model=self.config['openai']['model_name'],
                 messages=[
@@ -147,7 +147,8 @@ Entity {entity_id}:
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"},  # Force JSON output
-                max_completion_tokens=self.config['openai']['max_tokens']  # GPT-5 uses max_completion_tokens, omit temperature (defaults to 1)
+                temperature=self.config['openai']['temperature'],  # Control determinism
+                max_tokens=self.config['openai']['max_tokens']  # GPT-4o-mini uses max_tokens
             )
 
             # Extract response text
