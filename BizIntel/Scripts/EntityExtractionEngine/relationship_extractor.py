@@ -155,11 +155,16 @@ Entity {entity_id}:
 
             self.stats['api_calls'] += 1
 
-            # DEBUG: Print first API response to see format
-            if self.stats['api_calls'] == 1:
-                print(f"         🔍 DEBUG - First GPT-5 Nano response ({len(api_response)} chars):")
+            # DEBUG: Print first API request and response to see what's being sent
+            if self.stats['api_calls'] <= 3:  # Show first 3 for variety
+                print(f"         🔍 DEBUG #{self.stats['api_calls']} - INPUT to GPT-5 Nano:")
                 print(f"         " + "="*70)
-                for line in api_response[:500].split('\n'):  # First 500 chars
+                print(f"         Entity: {entity['entity_text']} ({entity.get('entity_type', 'UNKNOWN')})")
+                print(f"         Context ({len(context)} chars): {context}")
+                print(f"         " + "="*70)
+                print(f"         🔍 DEBUG #{self.stats['api_calls']} - OUTPUT from GPT-5 Nano ({len(api_response)} chars):")
+                print(f"         " + "="*70)
+                for line in api_response.split('\n'):
                     print(f"         {line}")
                 print(f"         " + "="*70)
 
