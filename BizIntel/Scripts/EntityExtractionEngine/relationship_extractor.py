@@ -147,7 +147,7 @@ Entity {entity_id}:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=self.config['openai']['temperature'],
-                max_tokens=self.config['openai']['max_tokens']
+                max_completion_tokens=self.config['openai']['max_tokens']  # GPT-5 uses max_completion_tokens
             )
 
             # Extract response text
