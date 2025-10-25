@@ -1,16 +1,14 @@
 """
 Relationship Extractor for Entity Extraction Engine
-Local Llama 3.1-8B model for business relationship analysis from SEC filings.
+OpenAI GPT-5 Nano API for business relationship analysis from SEC filings.
 """
 
 import uuid
 import json
-import torch
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from huggingface_hub import login
+from openai import OpenAI
 try:
     from kaggle_secrets import UserSecretsClient
 except ImportError:
@@ -19,123 +17,75 @@ except ImportError:
 
 
 class RelationshipExtractor:
-    """Extract business relationships using local Llama 3.1-8B model"""
+    """Extract business relationships using OpenAI GPT-5 Nano API"""
 
     def __init__(self, config: Dict, cached_tokenizer=None, cached_model=None):
         """Initialize relationship extractor
 
         Args:
             config: Configuration dictionary
-            cached_tokenizer: Optional pre-loaded tokenizer (for model-only persistence)
-            cached_model: Optional pre-loaded model (for model-only persistence)
+            cached_tokenizer: Ignored (kept for backward compatibility)
+            cached_model: Ignored (kept for backward compatibility)
         """
         self.config = config
-        self.model = cached_model
-        self.tokenizer = cached_tokenizer
         self.stats = {
-            'llama_calls': 0,
+            'api_calls': 0,
             'entities_analyzed': 0,
             'relationships_extracted': 0,
             'failed_extractions': 0
         }
 
-        # Only load model if not provided (enables model-only persistence pattern)
-        if cached_model is None or cached_tokenizer is None:
-            self._load_llama_model()
-        else:
-            print("   ♻️  Using cached Llama model (model-only persistence)")
-    
-    def _load_llama_model(self):
-        """Load Llama 3.1-8B model locally with optimization"""
+        # Initialize OpenAI client
+        self._init_openai_client()
+
+    def _init_openai_client(self):
+        """Initialize OpenAI API client"""
         try:
-            print("   🔧 Initializing Llama 3.1-8B model...")
-            
-            # Check for Hugging Face token
-            hf_token = None
+            print("   🔧 Initializing OpenAI API client...")
+
+            # Get API key from Kaggle secrets
+            api_key = None
             try:
-                user_secrets = UserSecretsClient()
-                hf_token = user_secrets.get_secret("HUGGINGFACE_TOKEN")
-                if hf_token:
-                    login(token=hf_token)
-                    print("   ✅ Hugging Face authentication successful")
-            except:
-                print("   ⚠️ No Hugging Face token found - using public model access")
-            
-            # Configure quantization for memory efficiency
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4"
-            )
-            
-            # Load tokenizer
-            model_name = self.config['llama']['model_name']
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
-            
-            # Set pad token if not exists
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            # Load model with quantization
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                quantization_config=quantization_config,
-                device_map="auto",
-                torch_dtype=torch.float16,
-                token=hf_token
-            )
-            
-            print(f"   ✅ Llama 3.1-8B loaded successfully")
-            print(f"   📊 Model device: {next(self.model.parameters()).device}")
-            
+                if UserSecretsClient:
+                    user_secrets = UserSecretsClient()
+                    api_key = user_secrets.get_secret("OPENAI_API_KEY")
+                    print("   ✅ OpenAI API key loaded from Kaggle secrets")
+            except Exception as e:
+                print(f"   ⚠️ Failed to load API key from secrets: {e}")
+
+            # Fallback to config if available
+            if not api_key:
+                api_key = self.config.get('openai', {}).get('api_key')
+
+            if not api_key:
+                raise ValueError("OpenAI API key not found in Kaggle secrets or config")
+
+            # Initialize OpenAI client
+            self.client = OpenAI(api_key=api_key)
+            print(f"   ✅ OpenAI client initialized (model: {self.config['openai']['model_name']})")
+
         except Exception as e:
-            print(f"   ❌ Failed to load Llama model: {e}")
-            self.model = None
-            self.tokenizer = None
+            print(f"   ❌ Failed to initialize OpenAI client: {e}")
+            self.client = None
     
     def extract_company_relationships(self, entities: List[Dict]) -> List[Dict]:
         """Extract relationships using individual entity processing with threading"""
-        if not self.model or not self.tokenizer:
-            print("   ⚠️ Llama model not available - skipping relationship extraction")
+        if not self.client:
+            print("   ⚠️ OpenAI client not available - skipping relationship extraction")
             return []
 
         if not entities:
             return []
 
-        print(f"   🔍 Analyzing relationships for {len(entities)} entities...")
+        print(f"   🔍 Analyzing relationships for {len(entities)} entities using GPT-5 Nano...")
 
         # Debug: Show entity field structure
         if entities:
             print(f"   📝 Entity sample fields: {list(entities[0].keys())}")
 
-        # Check batch_size to determine processing mode
-        batch_size = self.config['llama']['batch_size']
-
-        if batch_size == 1:
-            # Individual entity processing with threading (eliminates hallucinations)
-            print(f"   🧵 Using threaded individual entity processing (hallucination-safe mode)")
-            relationships = self._extract_with_threading(entities)
-        else:
-            # Legacy batch processing (kept for backward compatibility)
-            print(f"   📦 Using legacy batch processing (batch_size={batch_size})")
-            relationships = []
-
-            # Process entities in batches
-            for i in range(0, len(entities), batch_size):
-                batch = entities[i:i+batch_size]
-
-                # Get context for each entity in the batch
-                entities_with_context = []
-                for entity in batch:
-                    context = self._get_entity_context(entity)
-                    entities_with_context.append((entity, context, entity.get('section_name', 'unknown')))
-
-                # Analyze batch with Llama
-                batch_relationships = self._analyze_relationship_batch(entities_with_context)
-                relationships.extend(batch_relationships)
-
-                print(f"      📊 Batch {i//batch_size + 1}: {len(batch_relationships)} relationships found")
+        # Always use threaded individual entity processing (eliminates hallucinations)
+        print(f"   🧵 Using threaded individual entity processing (hallucination-safe mode)")
+        relationships = self._extract_with_threading(entities)
 
         self.stats['entities_analyzed'] += len(entities)
         self.stats['relationships_extracted'] += len(relationships)
@@ -157,8 +107,8 @@ class RelationshipExtractor:
         return context
 
     def _analyze_single_entity(self, entity: Dict, context: str, section_name: str) -> List[Dict]:
-        """Analyze a single entity for relationships (thread-safe)"""
-        if not self.model or not self.tokenizer:
+        """Analyze a single entity for relationships using OpenAI API (thread-safe)"""
+        if not self.client:
             return []
 
         try:
@@ -187,61 +137,27 @@ Entity {entity_id}:
 """
 
             # Use centralized prompt from CONFIG
-            prompt = self.config['llama']['SEC_FilingsPrompt'].format(entities_text=entities_text)
+            prompt = self.config['openai']['SEC_FilingsPrompt'].format(entities_text=entities_text)
 
-            # Create messages for chat format
-            messages = [
-                {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
-                {"role": "user", "content": prompt}
-            ]
-
-            # Thread-safe tokenization with attention mask
-            # Note: Hugging Face tokenizers are thread-safe for read operations
-            # Apply chat template to get the formatted text
-            formatted_text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True
+            # Call OpenAI API
+            response = self.client.chat.completions.create(
+                model=self.config['openai']['model_name'],
+                messages=[
+                    {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=self.config['openai']['temperature'],
+                max_tokens=self.config['openai']['max_tokens']
             )
 
-            # Tokenize with attention mask (thread-safe - no lock needed)
-            tokenized = self.tokenizer(
-                formatted_text,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=2048,
-                return_attention_mask=True
-            )
+            # Extract response text
+            api_response = response.choices[0].message.content
 
-            # Extract components and move to device
-            device = next(self.model.parameters()).device
-            input_ids = tokenized['input_ids'].to(device)
-            attention_mask = tokenized['attention_mask'].to(device)
-
-            # Generate response (thread-safe with torch.no_grad())
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=2000,
-                    temperature=self.config["llama"]["temperature"],
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
-                )
-
-            # Decode response
-            llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-            # Extract just the assistant's response
-            if "assistant" in llama_response:
-                llama_response = llama_response.split("assistant")[-1].strip()
-
-            self.stats['llama_calls'] += 1
+            self.stats['api_calls'] += 1
 
             # Parse JSON response
             relationships = self._parse_batch_llama_response(
-                llama_response,
+                api_response,
                 [(entity, context, section_name)]
             )
 
@@ -249,18 +165,17 @@ Entity {entity_id}:
 
         except Exception as e:
             entity_name = entity.get('entity_text', 'unknown')
-            print(f"         ⚠️ Single entity Llama analysis failed for '{entity_name}': {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"         ⚠️ API analysis failed for '{entity_name}': {e}")
+            self.stats['failed_extractions'] += 1
             return []
 
     def _extract_with_threading(self, entities: List[Dict]) -> List[Dict]:
-        """Extract relationships using threading for parallel processing"""
+        """Extract relationships using threading for parallel API calls"""
         if not entities:
             return []
 
-        max_workers = self.config['llama'].get('max_workers', 8)
-        print(f"   🔄 Processing {len(entities)} entities with {max_workers} parallel workers...")
+        max_workers = self.config['openai'].get('max_workers', 30)
+        print(f"   🔄 Processing {len(entities)} entities with {max_workers} parallel API workers...")
 
         relationships = []
 
@@ -290,105 +205,21 @@ Entity {entity_id}:
                     completed += 1
 
                     # Progress indicator
-                    if completed % 5 == 0 or completed == len(entities):
+                    if completed % 10 == 0 or completed == len(entities):
                         print(f"      📊 Progress: {completed}/{len(entities)} entities analyzed")
 
                 except Exception as e:
                     print(f"      ⚠️ Entity analysis failed for {entity.get('entity_text', 'unknown')}: {e}")
+                    self.stats['failed_extractions'] += 1
                     continue
 
-        print(f"   ✅ Threading complete: {len(relationships)} relationships found from {len(entities)} entities")
+        print(f"   ✅ API extraction complete: {len(relationships)} relationships found from {len(entities)} entities")
         return relationships
 
     def _analyze_relationship_batch(self, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
-        """Analyze multiple entities in a single Llama call for efficiency"""
-        if not self.model or not self.tokenizer or not entities_batch:
-            return []
-        
-        try:
-            # Build entities text for prompt
-            entities_text = ""
-            for i, (entity, context, section_name) in enumerate(entities_batch, 1):
-                company_domain = entity.get("company_domain", "Unknown")
-
-                # Get normalized entity ID from coreference group if available
-                coreference_group = entity.get("coreference_group", {})
-                if isinstance(coreference_group, str):
-                    # Parse JSON if it's a string
-                    try:
-                        import json
-                        coreference_group = json.loads(coreference_group)
-                    except:
-                        coreference_group = {}
-
-                # Use normalized_entity_id for grouping, fallback to entity_id
-                normalized_id = coreference_group.get("normalized_entity_id")
-                entity_id = normalized_id if normalized_id else entity.get("entity_id", f"E{i:03d}")
-
-                entities_text += f"""
-Entity {entity_id}:
-- Company: {company_domain}
-- Entity: {entity["entity_text"]} (Type: {entity.get("entity_type", "UNKNOWN")})
-- Section: {section_name}
-- Context: {context[:400]}
-"""
-
-            # Use centralized prompt from CONFIG
-            prompt = self.config['llama']['SEC_FilingsPrompt'].format(entities_text=entities_text)
-
-            # DEBUG: Print entities_text length and sample
-            print(f"         📊 Built entities_text: {len(entities_text)} chars, {len(entities_batch)} entities")
-            print(f"         📝 Entities sample (first 500 chars): {entities_text[:500]}...")
-
-            # Create messages for chat format
-            messages = [
-                {"role": "system", "content": "You are an expert at analyzing business relationships from SEC filings. Always respond with valid JSON in the exact format requested."},
-                {"role": "user", "content": prompt}
-            ]
-
-            # DEBUG: Print final prompt length
-            print(f"         📏 Final prompt length: {len(prompt)} chars")
-            
-            # Apply chat template
-            inputs = self.tokenizer.apply_chat_template(
-                messages,
-                return_tensors="pt",
-                tokenize=True
-            )
-            
-            # Generate response with expanded token limit
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs,
-                    max_new_tokens=2000,  # Increased from 50 to 2000
-                    temperature=self.config["llama"]["temperature"],
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
-                )
-            
-            # Decode response
-            llama_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-            # Extract just the assistant's response
-            if "assistant" in llama_response:
-                llama_response = llama_response.split("assistant")[-1].strip()
-
-            self.stats['llama_calls'] += 1
-
-            # ALWAYS print raw Llama response for visibility
-            print(f"         📄 Raw Llama response ({len(llama_response)} chars):")
-            print(f"         " + "="*70)
-            # Print the full response, line by line with indentation
-            for line in llama_response.split('\n'):
-                print(f"         {line}")
-            print(f"         " + "="*70)
-
-            # Parse JSON response
-            return self._parse_batch_llama_response(llama_response, entities_batch)
-            
-        except Exception as e:
-            print(f"         ⚠️ Batch Llama analysis failed: {e}")
-            return []
+        """DEPRECATED: Batch processing removed - use individual entity API calls instead"""
+        print("   ⚠️ Batch processing is deprecated - use individual entity processing")
+        return []
     
     def _parse_batch_llama_response(self, response: str, entities_batch: List[Tuple[Dict, str, str]]) -> List[Dict]:
         """Parse Llama batch response into relationship records (BINARY EDGE FORMAT)"""
@@ -517,7 +348,7 @@ Entity {entity_id}:
 
                         # Metadata
                         'extraction_timestamp': datetime.now(),
-                        'llama_model': self.config['llama']['model_name']
+                        'llama_model': self.config['openai']['model_name']
                     }
 
                     relationships.append(relationship)
